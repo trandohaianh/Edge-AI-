@@ -1,0 +1,47 @@
+{
+ "test_acc": 0.9642857142857143,
+ "confusion": [
+  [
+   700,
+   0,
+   0,
+   0
+  ],
+  [
+   7,
+   657,
+   2,
+   34
+  ],
+  [
+   0,
+   1,
+   696,
+   3
+  ],
+  [
+   20,
+   30,
+   3,
+   647
+  ]
+ ],
+ "classes": [
+  "noise",
+  "wifi",
+  "bluetooth",
+  "drone_ctrl"
+ ],
+ "params": 62452,
+ "by_snr": {
+  "-6..0 dB": 0.8625,
+  "0..6 dB": 0.9604,
+  "6..12 dB": 0.9896,
+  "12..18 dB": 0.9917,
+  "18..24 dB": 0.9896
+ },
+ "arch": "STFT + CNN 2D",
+ "ablation_raw_iq_1dcnn_acc": 0.9492857142857143,
+ "n_test": 2800,
+ "ablation_note": "C\u00f9ng b\u1ed9 d\u1eef li\u1ec7u, c\u00f9ng s\u1ed1 epoch, c\u00f9ng s\u1ed1 tham s\u1ed1 (62k)."
+}

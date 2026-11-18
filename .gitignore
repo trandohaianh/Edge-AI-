@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+TAI-KHOAN.md
+data/*_test.npz
+data/rf_cache*.npz
+data/audit*.jsonl
+logs/

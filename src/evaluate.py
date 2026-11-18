@@ -11,27 +11,27 @@ from pathlib import Path
 
 import numpy as np
 
-from config import CONFIRM_THRESHOLD, FRAME_DT, RADAR_DWELL, SEED
+from config import CONFIRM_THRESHOLD, FRAME_DT, MD_EVERY, RF_EVERY, SEED  # noqa: F401
 from pipeline import Pipeline, load_models
-from radar_sim import micro_doppler
-from rf_sim import make_segment
-from scene import TARGET_KINDS, Weather, make_scenario, sense
+from scene import Weather, make_scenario, sense
+from sensors import EOTurret, attach_raw, lambda_iq  # noqa: F401  (tương thích)
 
 DATA = Path(__file__).resolve().parent.parent / "data"
-MD_EVERY = int(round(RADAR_DWELL / FRAME_DT))     # 1 chữ ký micro-Doppler / 0,35 s
-RF_EVERY = 5                                       # 1 đoạn I/Q / 0,5 s
 
 
 def run_scenario(models, kind: str, w: Weather, n_frames: int, seed: int,
                  patch: bool = False, dropout: tuple[int, int] | None = None,
-                 pattern: str | None = None):
+                 pattern: str | None = None, r0: float | None = None):
     rng = np.random.default_rng(seed)
     pipe = Pipeline(models)
     tg = make_scenario(n_frames, rng, w, kinds=[kind],
                        patch_ids={0} if patch else set(),
-                       patterns=[pattern] if pattern else None)[0]
-    pipe.ensure_track(0, tg.pos[0] + rng.normal(0, 25, 3),
-                      tg.vel[0] + rng.normal(0, 6, 3))
+                       patterns=[pattern] if pattern else None, r0=r0)[0]
+    tr = pipe.ensure_track(0, tg.pos[0] + rng.normal(0, 25, 3),
+                           tg.vel[0] + rng.normal(0, 6, 3))
+    # Camera trên bệ quay, được dẫn theo phương vị của vết bám (không phải
+    # theo sự thật mô phỏng — hệ thống chỉ biết cái nó bám được).
+    turret = EOTurret(float(np.arctan2(tr.ekf.pos[1], tr.ekf.pos[0])))
 
     errs, confs, kinds_seen, rows = [], [], [], []
     first_confirm = None
@@ -40,14 +40,10 @@ def run_scenario(models, kind: str, w: Weather, n_frames: int, seed: int,
     operator_asks = 0
     for k in range(n_frames):
         blind = dropout is not None and dropout[0] <= k < dropout[1]
-        dets = [] if blind else sense(tg, k, w, rng)
-        iq = spec = None
-        if not blind and k % RF_EVERY == 0 and any(d.sensor == "rf" for d in dets):
-            iq = np.stack(lambda_iq(tg, rng))
-        if not blind and k % MD_EVERY == 0 and any(d.sensor == "radar" for d in dets):
-            spec = micro_doppler(_radar_class(tg.kind), rng,
-                                 snr_db=_snr_for(tg, k), rain=w.rain)
-        msg = pipe.step(0, dets, w, k, iq=iq, spec=spec)
+        dets = [] if blind else sense(tg, k, w, rng, eo_az=turret.az)
+        attach_raw(dets, tg, k, w, rng)          # I/Q, ảnh phổ khi tới lịch
+        msg = pipe.step(0, dets, w, k)
+        turret.point(float(np.arctan2(msg["pos"][1], msg["pos"][0])))
 
         e = float(np.linalg.norm(np.array(msg["pos"]) - tg.pos[k]))
         errs.append(e)
@@ -90,21 +86,6 @@ def run_scenario(models, kind: str, w: Weather, n_frames: int, seed: int,
     }
 
 
-def _radar_class(kind: str) -> str:
-    return kind
-
-
-def _snr_for(tg, k) -> float:
-    r = float(np.linalg.norm(tg.pos[k]))
-    return float(np.clip(30 - 20 * np.log10(max(r, 100) / 300), 2, 26))
-
-
-def lambda_iq(tg, rng):
-    s = make_segment("drone_ctrl" if tg.emits_rf else "noise", rng,
-                     snr_db=rng.uniform(2, 20))
-    return [s.real.astype(np.float32), s.imag.astype(np.float32)]
-
-
 def summarize(name, runs, keys):
     out = {"scenario": name, "n_runs": len(runs)}
     for k in keys:
@@ -135,7 +116,9 @@ def main(n_runs: int = 8, n_frames: int = 220):
         ("S4 · mưa to", dict(kind="fixed_wing", w=Weather(rain=0.8))),
         ("S5 · chim (phải loại, không báo động)", dict(kind="bird", w=Weather())),
         ("S6 · dán nhãn ngụy trang đánh lừa camera",
-         dict(kind="multirotor", w=Weather(), patch=True)),
+         # r0 = 900 m: mục tiêu phải vào tầm nhận dạng của camera (1,2 km),
+         # nếu không kịch bản này chẳng thử được gì về chống đánh lừa camera.
+         dict(kind="multirotor", w=Weather(), patch=True, r0=900.0)),
         ("S7 · mất dấu 4 giây giữa chừng",
          dict(kind="multirotor", w=Weather(), dropout=(110, 150))),
     ]

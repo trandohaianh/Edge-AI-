@@ -21,10 +21,10 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from config import LATENCY_BUDGET_MS
-from evaluate import MD_EVERY, RF_EVERY
+from config import LATENCY_BUDGET_MS, MD_EVERY, RF_EVERY
 from models import count_params
 from pipeline import DATA, HIST, MODEL_FILES, Pipeline, load_models, warmup
+from sensors import md_due, rf_due
 
 
 def _bench(fn, n: int) -> dict:
@@ -63,7 +63,8 @@ def main(threads: int = 2, n: int = 300, out: Path | None = DATA / "edge_bench.j
                 "file_kb": round((DATA / f).stat().st_size / 1024, 1),
                 "fp32_weights_kb": round(count_params(m) * 4 / 1024, 1),
                 "latency": _bench(lambda m=m, inp=inp: m(inp), n)}
-        # Khung xấu nhất trong vòng 10 Hz: cả hai mạng nặng cùng chạy.
+        # Khung xấu nhất NẾU hai mạng nặng chạy cùng khung (bản cũ: 6,7% số
+        # khung; bản mới: không bao giờ — xem sensors.rf_due).
         res["worst_frame_rf_plus_md"] = _bench(lambda: (rf(iq), md(sp)), n)
     pipe = Pipeline(models)
     hist = [(np.random.randn(3) * 100, np.random.randn(3)) for _ in range(HIST)]
@@ -71,7 +72,9 @@ def main(threads: int = 2, n: int = 300, out: Path | None = DATA / "edge_bench.j
     res["blackout_one_extension_1s"] = _bench(
         lambda: pipe._extend(np.zeros((0, 3)), hist), n)
     res["schedule"] = {"rf_every_frames": RF_EVERY, "md_every_frames": MD_EVERY,
-                       "frames_with_both_nets_pct": round(100 / np.lcm(RF_EVERY, MD_EVERY), 1)}
+                       "frames_with_both_nets_pct": round(100 * float(np.mean(
+                           [rf_due(k) and md_due(k) for k in range(600)])), 1),
+                       "rf_runs_per_s": round(sum(rf_due(k) for k in range(600)) / 60, 2)}
     print(json.dumps(res, indent=1, ensure_ascii=False))
     if out is not None:
         with open(out, "w", encoding="utf-8") as fh:

@@ -148,8 +148,12 @@ class Detection:
 
 
 def sense(target: Target, k: int, w: Weather, rng: np.random.Generator,
-          md_prob=None, rf_prob=None) -> list[Detection]:
-    """Số đo của 4 cảm biến tại khung k. Trả về danh sách (có thể rỗng)."""
+          md_prob=None, rf_prob=None, eo_az: float | None = None) -> list[Detection]:
+    """Số đo của 4 cảm biến tại khung k. Trả về danh sách (có thể rỗng).
+
+    ``eo_az`` là phương vị bệ quay camera đang hướng tới; ``None`` nghĩa là
+    camera cố định nhìn về hướng 0 (trục x).
+    """
     p = target.pos[k]
     v = target.vel[k]
     r, az, el = spherical(p)
@@ -181,7 +185,11 @@ def sense(target: Target, k: int, w: Weather, rng: np.random.Generator,
 
     # ---------------------------------------------------------------- EO/IR
     eo_range = EO_RANGE_CLEAR * (1 - 0.75 * w.fog) * (0.55 if w.night else 1.0)
-    in_fov = abs(az) < np.deg2rad(EO_FOV_DEG)
+    # EO_FOV_DEG là TOÀN góc nhìn nên so với NỬA góc. Bản cũ so với cả góc,
+    # tức camera "60°" thật ra nhìn được 120°.
+    look = 0.0 if eo_az is None else eo_az
+    off = (az - look + np.pi) % (2 * np.pi) - np.pi
+    in_fov = abs(off) < np.deg2rad(EO_FOV_DEG / 2)
     if in_fov and r < eo_range and rng.random() < 0.9:
         sa = np.deg2rad(0.08) * (1 + 2 * w.fog)
         z = np.array([az + rng.normal(0, sa), el + rng.normal(0, sa)])

@@ -1,0 +1,140 @@
+{
+ "scenarios": [
+  {
+   "scenario": "M1 · 3 drone + 1 chim, báo động giả 1/khung",
+   "n_targets": 4,
+   "clutter_per_frame": 1.0,
+   "ospa_m": 1.186,
+   "ospa_m_ci95": [
+    1.089,
+    1.283
+   ],
+   "coverage": 1.0,
+   "coverage_ci95": [
+    1.0,
+    1.0
+   ],
+   "id_switches": 0.0,
+   "false_tracks_per_frame": 0.0,
+   "cls_acc": 1.0,
+   "cls_acc_ci95": [
+    1.0,
+    1.0
+   ],
+   "bird_operator_frames": 0.0,
+   "lat_mean_ms": 17.841,
+   "lat_p99_ms": 41.56,
+   "lat_max_ms": 98.6
+  },
+  {
+   "scenario": "M2 · 2 drone bay sát nhau (cách 2°), báo động giả 1/khung",
+   "n_targets": 2,
+   "clutter_per_frame": 1.0,
+   "ospa_m": 0.813,
+   "ospa_m_ci95": [
+    0.751,
+    0.875
+   ],
+   "coverage": 1.0,
+   "coverage_ci95": [
+    1.0,
+    1.0
+   ],
+   "id_switches": 0.0,
+   "false_tracks_per_frame": 0.0,
+   "cls_acc": 1.0,
+   "cls_acc_ci95": [
+    1.0,
+    1.0
+   ],
+   "bird_operator_frames": 0.0,
+   "lat_mean_ms": 11.405,
+   "lat_p99_ms": 32.003,
+   "lat_max_ms": 47.645
+  },
+  {
+   "scenario": "M3 · bầy 6 drone trong mưa, báo động giả 3/khung",
+   "n_targets": 6,
+   "clutter_per_frame": 3.0,
+   "ospa_m": 2.219,
+   "ospa_m_ci95": [
+    0.578,
+    3.86
+   ],
+   "coverage": 1.0,
+   "coverage_ci95": [
+    1.0,
+    1.0
+   ],
+   "id_switches": 0.0,
+   "false_tracks_per_frame": 0.061,
+   "cls_acc": 1.0,
+   "cls_acc_ci95": [
+    1.0,
+    1.0
+   ],
+   "bird_operator_frames": 0.0,
+   "lat_mean_ms": 28.655,
+   "lat_p99_ms": 70.469,
+   "lat_max_ms": 119.905
+  },
+  {
+   "scenario": "M4 · 2 drone + 2 chim, sương mù đêm",
+   "n_targets": 4,
+   "clutter_per_frame": 1.0,
+   "ospa_m": 3.859,
+   "ospa_m_ci95": [
+    3.546,
+    4.172
+   ],
+   "coverage": 1.0,
+   "coverage_ci95": [
+    1.0,
+    1.0
+   ],
+   "id_switches": 0.0,
+   "false_tracks_per_frame": 0.0,
+   "cls_acc": 1.0,
+   "cls_acc_ci95": [
+    1.0,
+    1.0
+   ],
+   "bird_operator_frames": 0.0,
+   "lat_mean_ms": 15.97,
+   "lat_p99_ms": 44.195,
+   "lat_max_ms": 75.233
+  }
+ ],
+ "frames": 200,
+ "runs_per_scenario": 5,
+ "ospa_c_m": 100.0,
+ "match_m": 50.0,
+ "warmup_frames": 30,
+ "scaling": [
+  {
+   "targets": 1,
+   "lat_mean_ms": 7.313,
+   "lat_p99_ms": 20.791,
+   "lat_max_ms": 23.46
+  },
+  {
+   "targets": 3,
+   "lat_mean_ms": 11.008,
+   "lat_p99_ms": 23.528,
+   "lat_max_ms": 40.047
+  },
+  {
+   "targets": 6,
+   "lat_mean_ms": 22.171,
+   "lat_p99_ms": 52.43,
+   "lat_max_ms": 55.325
+  },
+  {
+   "targets": 10,
+   "lat_mean_ms": 37.889,
+   "lat_p99_ms": 75.543,
+   "lat_max_ms": 112.863
+  }
+ ],
+ "note": "Đo trên CPU x86 (Windows, 2 luồng torch), không phải Jetson. Dữ liệu mô phỏng."
+}

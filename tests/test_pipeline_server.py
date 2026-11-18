@@ -23,6 +23,9 @@ import pipeline as PL                                 # noqa: E402
 from scene import Weather, make_scenario, rotate_into_view, sense  # noqa: E402
 
 
+LOCAL = ("127.0.0.1", 50000)
+
+
 @pytest.fixture(scope="module")
 def models():
     return PL.load_models()
@@ -160,14 +163,14 @@ def srv(models, tmp_path, monkeypatch):
     monkeypatch.delenv("EDGE_API_TOKEN", raising=False)
     eng = server.Engine(models=models, audit_path=tmp_path / "audit.jsonl", start=False)
     monkeypatch.setattr(server, "ENGINE", eng)
-    return server, eng, TestClient(server.app), tmp_path / "audit.jsonl"
+    return server, eng, TestClient(server.app, client=LOCAL), tmp_path / "audit.jsonl"
 
 
 def test_chua_khoi_dong_thi_tra_503(monkeypatch):
     import server
     from fastapi.testclient import TestClient
     monkeypatch.setattr(server, "ENGINE", None)
-    c = TestClient(server.app)
+    c = TestClient(server.app, client=LOCAL)
     assert c.get("/api/state").status_code == 503
     assert c.post("/api/act", json={"action": "bo_qua"}).status_code == 503
     assert c.get("/api/health").status_code == 503
@@ -240,9 +243,141 @@ def test_lifespan_khoi_dong_va_dung_vong_lap(models, tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     monkeypatch.setenv("EDGE_AUDIT_LOG", str(tmp_path / "a.jsonl"))
     monkeypatch.setattr(server, "load_models", lambda allow_untrained=False: models)
-    with TestClient(server.app) as c:
+    with TestClient(server.app, client=LOCAL) as c:
         eng = server.ENGINE
         assert eng is not None and eng._thread.is_alive()
         assert c.get("/").status_code == 200
     assert server.ENGINE is None
     assert not eng._thread.is_alive()
+
+
+# ------------------------------------------------- đợt phát triển thứ hai
+def test_nhat_ky_chuoi_bam_phat_hien_sua_va_xoa(tmp_path):
+    import audit_log
+    p = tmp_path / "a.jsonl"
+    prev = audit_log.GENESIS
+    lines = []
+    for i in range(4):
+        rec = audit_log.chain(prev, {"frame": i, "action": "xac_nhan", "operator": "ca"})
+        prev = rec["hash"]
+        lines.append(json.dumps(rec, ensure_ascii=False))
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert audit_log.verify(p) == (True, 4, "")
+    assert audit_log.last_hash(p) == prev
+    sua = lines.copy()
+    sua[1] = sua[1].replace('"xac_nhan"', '"bo_qua"')
+    p.write_text("\n".join(sua) + "\n", encoding="utf-8")
+    ok, n, err = audit_log.verify(p)
+    assert not ok and n == 1 and "sửa" in err
+    xoa = lines[:1] + lines[2:]
+    p.write_text("\n".join(xoa) + "\n", encoding="utf-8")
+    ok, _, err = audit_log.verify(p)
+    assert not ok and "đứt chuỗi" in err
+
+
+def test_may_chu_noi_tiep_chuoi_bam_sau_khi_khoi_dong_lai(srv, models):
+    import audit_log
+    server, eng, c, log = srv
+    eng._step()
+    assert c.post("/api/act", json={"action": "xac_nhan"}).status_code == 200
+    eng2 = server.Engine(models=models, audit_path=log, start=False)   # "khởi động lại"
+    eng2._step()
+    eng2.act("bo_qua", "ca-2")
+    assert audit_log.verify(log) == (True, 2, "")
+
+
+def test_khong_dat_ma_thi_chi_may_chu_moi_dieu_khien_duoc(srv):
+    server, eng, _, _ = srv
+    from fastapi.testclient import TestClient
+    eng._step()
+    xa = TestClient(server.app, client=("10.0.0.7", 40000))
+    assert xa.post("/api/act", json={"action": "bo_qua"}).status_code == 403
+    assert xa.post("/api/scenario/bird").status_code == 403
+    assert xa.get("/api/state").status_code == 200
+
+
+def test_hai_mang_nang_khong_bao_gio_chung_mot_khung():
+    from sensors import md_due, rf_due
+    ks = range(3000)
+    assert not any(rf_due(k) and md_due(k) for k in ks)
+    assert sum(rf_due(k) for k in ks) == 600          # vẫn đúng 2 lần/giây
+    assert sum(md_due(k) for k in ks) == 1000
+
+
+def test_rf_khong_bao_gio_la_bang_chung_cho_chim():
+    """Chim không phát sóng: RF chỉ được nói 'drone' hoặc 'không biết'."""
+    from config import RF_CLASSES
+    for i in range(len(RF_CLASSES)):
+        p = np.full(len(RF_CLASSES), 1e-4)
+        p[i] = 1.0
+        p /= p.sum()
+        lp = PL._rf_map(p)
+        bird = TARGET_KINDS_IDX["bird"]
+        assert lp[bird] <= lp.max() + 1e-12
+        assert lp[bird] <= min(lp[0], lp[1]) + 1e-9
+
+
+def test_camera_60_do_va_be_quay_gioi_han_toc_do():
+    from sensors import EOTurret
+    rng = np.random.default_rng(0)
+    tg = make_scenario(5, rng, Weather(), kinds=["multirotor"], patterns=["approach"], r0=500)[0]
+    rotate_into_view(tg, np.deg2rad(40))             # lệch 40° > nửa góc 30°
+
+    def eo_count(eo_az):
+        rr = np.random.default_rng(1)
+        return sum(d.sensor == "eo" for _ in range(30) for d in sense(tg, 0, Weather(), rr, eo_az=eo_az))
+
+    assert eo_count(0.0) == 0
+    assert eo_count(np.deg2rad(40)) > 20
+    t = EOTurret(0.0)
+    t.point(np.pi / 2)
+    assert abs(t.az - np.deg2rad(6.0)) < 1e-9        # 60°/s × 0,1 s
+
+
+TARGET_KINDS_IDX = {"multirotor": 0, "fixed_wing": 1, "bird": 2}
+
+
+def test_rf_hoa_hai_lop_drone_khong_bi_tinh_la_mau_thuan():
+    """RF không phân biệt đa cánh/cánh bằng; camera nói đúng 'cánh bằng' thì
+    không được coi là mâu thuẫn (bản cũ: argmax hoà luôn chọn 'đa cánh')."""
+    from fusion import IdentityFuser
+    from scene import Detection
+    rf_lp = PL._rf_map(np.array([0.01, 0.01, 0.01, 0.97]))
+    eo_lp = np.log(np.array([0.05, 0.9, 0.05]))
+    f = IdentityFuser()
+    for _ in range(60):
+        f.update([Detection("rf", np.zeros(1), np.eye(1), rf_lp),
+                  Detection("eo", np.zeros(2), np.eye(2), eo_lp)], Weather(), 500.0)
+    assert f.state.conflict == 0.0
+    assert f.state.top()[0] == "fixed_wing"
+
+
+def test_nghi_bi_danh_lua_thi_phai_hoi_nguoi(models):
+    """Nhãn ngụy trang không được TẮT cảnh báo: S6 phải đưa lên người trực."""
+    import evaluate as EV
+    r = EV.run_scenario(models, "multirotor", Weather(), 160, seed=31, patch=True, r0=900.0)
+    late = r["rows"][80:]
+    assert any(m["deception_suspected"] for m in late)
+    assert np.mean([m["needs_operator"] for m in late]) > 0.5
+    assert np.mean([m["kind"] == "multirotor" for m in late]) == 1.0
+
+
+def test_dashboard_nhieu_muc_tieu_va_quyet_dinh_theo_id(srv):
+    server, eng, c, log = srv
+    assert c.post("/api/scenario/swarm").status_code == 200
+    for _ in range(45):
+        eng._step()
+    s = c.get("/api/state").json()
+    assert s["multi"] is True and s["n_targets_truth"] == 4
+    assert len(s["tracks"]) >= 3
+    tids = [t["tid"] for t in s["tracks"]]
+    assert set(s["trails"]) >= {str(t) for t in tids}
+    assert c.post("/api/act", json={"action": "bo_qua", "tid": 999999}).status_code == 404
+    r = c.post("/api/act", json={"action": "xac_nhan", "tid": tids[-1]})
+    assert r.status_code == 200
+    assert c.post("/api/act", json={"action": "bo_qua", "tid": tids[-1]}).status_code == 409
+    rec = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])
+    assert rec["tid"] == tids[-1]
+    eng._step()
+    s = c.get("/api/state").json()
+    assert {t["tid"]: t["operator"] for t in s["tracks"]}[tids[-1]] == "xac_nhan"

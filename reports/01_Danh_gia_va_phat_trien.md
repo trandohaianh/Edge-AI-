@@ -2,6 +2,10 @@
 
 Ngày rà soát: 18/11/2026 · Nhánh: `audit/danh-gia-phat-trien` (tách từ `main`, mốc gốc `1ad2d7e`)
 
+> **Cập nhật đợt 2:** 4 việc ở mục 5 đã được làm theo lựa chọn khuyến nghị,
+> và hệ thống đã có bám nhiều mục tiêu. Xem `reports/02_Phat_trien_bam_nhieu_muc_tieu.md`.
+> Đề xuất ở mục 6.5 (lệch pha RF) là **sai** và đã được đính chính trong báo cáo 02.
+
 ---
 
 ## 1. Tóm tắt

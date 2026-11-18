@@ -1,6 +1,6 @@
 {
  "defended_acc": 1.0,
- "naive_acc": 0.0338,
+ "naive_acc": 0.109,
  "eo_only_acc": 0.0,
  "clean_defended_acc": 1.0,
  "clean_eo_only_acc": 1.0,

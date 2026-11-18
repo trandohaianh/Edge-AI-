@@ -22,7 +22,7 @@ import torch
 from config import (ALERT_THRESHOLD, CONFIRM_THRESHOLD, FRAME_DT, RADAR_CLASSES,
                     RF_CLASSES)
 from ekf import EKF
-from fusion import IdentityFuser, track_confidence
+from fusion import DECEPTION_LEVEL, IdentityFuser, track_confidence
 from models import MicroDopplerNet, TrajTransformer
 from rf_stft import RFNetSTFT
 from scene import TARGET_KINDS, Detection, Weather
@@ -85,15 +85,7 @@ def warmup(models) -> None:
         tj(torch.zeros(1, HIST, 6))
 
 
-def md_logp(md: MicroDopplerNet, spec: np.ndarray) -> np.ndarray:
-    """Spectrogram -> log xác suất trên 3 lớp mục tiêu chung.
-
-    Lớp 'clutter' của radar không phải một mục tiêu, nên khối lượng xác suất
-    của nó được chia đều — tức là 'không có thông tin', chứ không bị ép
-    thành một lớp mục tiêu nào.
-    """
-    with torch.no_grad():
-        p = torch.softmax(md(torch.from_numpy(spec[None, None])), 1).numpy()[0]
+def _md_map(p: np.ndarray) -> np.ndarray:
     out = np.zeros(len(TARGET_KINDS))
     for i, c in enumerate(RADAR_CLASSES):
         t = MD_TO_TARGET[c]
@@ -104,18 +96,50 @@ def md_logp(md: MicroDopplerNet, spec: np.ndarray) -> np.ndarray:
     return np.log(np.clip(out, 1e-6, 1.0))
 
 
-def rf_logp(rf: RFNetSTFT, iq: np.ndarray) -> np.ndarray:
-    """I/Q -> log xác suất. RF chỉ nói được 'có link điều khiển hay không'.
-
-    Một link điều khiển loại trừ chim (chim không phát sóng) nhưng không
-    phân biệt được đa cánh quạt với cánh bằng, nên bằng chứng được chia đều
-    cho hai lớp đó.
-    """
-    with torch.no_grad():
-        p = torch.softmax(rf(torch.from_numpy(iq[None])), 1).numpy()[0]
+def _rf_map(p: np.ndarray) -> np.ndarray:
+    # Chỉ "drone" hoặc "không biết". Phần xác suất KHÔNG phải link điều khiển
+    # (nhiễu, WiFi, Bluetooth) chia đều cho cả 3 lớp, KHÔNG dồn vào "chim".
+    #
+    # Bản cũ dồn hết vào "chim". Nhưng chim không phát sóng: một tín hiệu
+    # WiFi ở hướng mục tiêu không nói gì về việc nó là chim. Đo trên mô
+    # hình đã huấn luyện, 8–11% đoạn tín hiệu drone thật bị đẩy về "chim" với
+    # log-odds ~5 nats — vượt cả trần 4 nats của một cảm biến. Mà vết bám bị
+    # coi là chim thì không bao giờ được đưa lên người trực: đó là lỗi BỎ SÓT.
+    # Bằng chứng "là chim" giờ chỉ đến từ chữ ký micro-Doppler của radar.
     drone = float(p[RF_CLASSES.index("drone_ctrl")])
-    out = np.array([drone / 2, drone / 2, 1.0 - drone])  # multi, fixed, bird
+    rest = (1.0 - drone) / 3.0
+    out = np.array([drone / 2 + rest, drone / 2 + rest, rest])  # multi, fixed, bird
     return np.log(np.clip(out, 1e-6, 1.0))
+
+
+def md_logp(md: MicroDopplerNet, spec: np.ndarray) -> np.ndarray:
+    """Spectrogram -> log xác suất trên 3 lớp mục tiêu chung.
+
+    Lớp 'clutter' của radar không phải một mục tiêu, nên khối lượng xác suất
+    của nó được chia đều — tức là 'không có thông tin', chứ không bị ép
+    thành một lớp mục tiêu nào.
+    """
+    return md_logp_batch(md, [spec])[0]
+
+
+def rf_logp(rf: RFNetSTFT, iq: np.ndarray) -> np.ndarray:
+    """I/Q -> log xác suất. RF chỉ nói được 'có link điều khiển hay không'."""
+    return rf_logp_batch(rf, [iq])[0]
+
+
+def md_logp_batch(md: MicroDopplerNet, specs: list) -> list[np.ndarray]:
+    """Gộp nhiều ảnh phổ vào MỘT lần suy luận: với nhiều mục tiêu, chạy một
+    batch rẻ hơn nhiều so với gọi mạng từng cái một."""
+    with torch.no_grad():
+        x = torch.from_numpy(np.stack(specs).astype(np.float32)[:, None])
+        p = torch.softmax(md(x), 1).numpy()
+    return [_md_map(r) for r in p]
+
+
+def rf_logp_batch(rf: RFNetSTFT, iqs: list) -> list[np.ndarray]:
+    with torch.no_grad():
+        p = torch.softmax(rf(torch.from_numpy(np.stack(iqs).astype(np.float32))), 1).numpy()
+    return [_rf_map(r) for r in p]
 
 
 @dataclass
@@ -137,11 +161,17 @@ class Track:
     blackout_vel: np.ndarray | None = None
     blackout_pred: np.ndarray | None = None
     blackout_hist: list | None = None              # lịch sử để nối dự đoán tiếp
+    # quản lý vết bám nhiều mục tiêu (mtt.py); Pipeline một mục tiêu bỏ qua
+    born: int = 0
+    pos_seen: int = 0                              # khung cuối có số đo radar/LiDAR
+    hits: deque = field(default_factory=lambda: deque(maxlen=8))
+    confirmed: bool = True
 
 
 class Pipeline:
-    """Một vết bám cho mỗi mục tiêu (bài toán liên kết đa mục tiêu nằm ngoài
-    phạm vi bản này — xem phần hạn chế trong báo cáo)."""
+    """Vòng xử lý cho vết bám đã biết trước (một mục tiêu). Bài toán nhiều
+    mục tiêu — liên kết số đo, sinh và xoá vết bám — nằm ở ``mtt.py`` và dùng
+    lại ``run_nets`` cùng ``advance`` của lớp này."""
 
     def __init__(self, models=None):
         self.rf, self.md, self.tj = models or load_models()
@@ -159,47 +189,79 @@ class Pipeline:
             self.tracks[tid] = Track(tid, EKF(p0, v0))
         return self.tracks[tid]
 
+    def run_nets(self, dets: list[Detection]) -> None:
+        """Chạy hai bộ phát hiện trên dữ liệu thô gắn trong ``d.meta``
+        (``iq`` cho RF, ``spec`` cho radar), mỗi loại một batch."""
+        t0 = time.perf_counter()
+        rf_d = [d for d in dets if d.sensor == "rf" and "iq" in d.meta]
+        if rf_d:
+            for d, lp in zip(rf_d, rf_logp_batch(self.rf, [d.meta["iq"] for d in rf_d])):
+                d.cls_logp = lp
+        self._t("rf_net", t0)
+        t0 = time.perf_counter()
+        md_d = [d for d in dets if d.sensor == "radar" and "spec" in d.meta]
+        if md_d:
+            for d, lp in zip(md_d, md_logp_batch(self.md, [d.meta["spec"] for d in md_d])):
+                d.cls_logp = lp
+        self._t("md_net", t0)
+
     # ------------------------------------------------------------------ frame
     def step(self, tid: int, dets: list[Detection], w: Weather, k: int,
              iq: np.ndarray | None = None, spec: np.ndarray | None = None):
-        """Xử lý một khung cho một vết bám. Trả về bản tin trạng thái."""
+        """Xử lý một khung cho một vết bám. Trả về bản tin trạng thái.
+
+        Dữ liệu thô có thể đưa qua ``iq``/``spec`` (áp cho mọi số đo RF/radar
+        của khung) hoặc gắn sẵn trong ``d.meta`` từng số đo.
+        """
         t_all = time.perf_counter()
         tr = self.tracks[tid]
 
-        # 1) Tiền xử lý: chuẩn hóa số đo (ở đây là chuyển sang mảng liên tục)
+        # 1) Tiền xử lý
         t0 = time.perf_counter()
-        dets = [d for d in dets]
+        dets = list(dets)
+        for d in dets:
+            if iq is not None and d.sensor == "rf":
+                d.meta["iq"] = iq
+            if spec is not None and d.sensor == "radar":
+                d.meta["spec"] = spec
         self._t("preproc", t0)
 
-        # 2) Suy luận nặng, chỉ khi có dữ liệu thô mới
-        t0 = time.perf_counter()
-        if iq is not None:
-            lp = rf_logp(self.rf, iq)
+        # 2) Suy luận nặng, chỉ khi có dữ liệu thô mới. Mọi số đo cùng loại
+        #    trong khung là của một mục tiêu nên dùng chung kết quả: chạy
+        #    mạng MỘT lần, không chạy lại cho từng số đo.
+        heavy = []
+        for sensor, key in (("rf", "iq"), ("radar", "spec")):
+            first = next((d for d in dets if d.sensor == sensor and key in d.meta), None)
+            if first is not None:
+                heavy.append(first)
+        self.run_nets(heavy)
+        for h in heavy:
             for d in dets:
-                if d.sensor == "rf":
-                    d.cls_logp = lp
-        self._t("rf_net", t0)
+                if d.sensor == h.sensor and d.cls_logp is None:
+                    d.cls_logp = h.cls_logp
 
-        t0 = time.perf_counter()
-        if spec is not None:
-            lp = md_logp(self.md, spec)
-            for d in dets:
-                if d.sensor == "radar":
-                    d.cls_logp = lp
-        self._t("md_net", t0)
-
-        # 3) Liên kết số đo với vết bám (cổng thống kê nằm trong EKF.update)
+        # 3) Liên kết: một mục tiêu nên chỉ sắp thứ tự cảm biến
         t0 = time.perf_counter()
         order = {"lidar": 0, "radar": 1, "eo": 2, "rf": 3}
         dets = sorted(dets, key=lambda d: order.get(d.sensor, 9))
         self._t("assoc", t0)
 
+        msg = self.advance(tr, dets, w, k, predict=True)
+        self._t("total", t_all)
+        return msg
+
+    def advance(self, tr: Track, dets: list[Detection], w: Weather, k: int,
+                predict: bool = True) -> dict:
+        """EKF + hợp nhất + dự đoán khi mất dấu cho MỘT vết bám, với các số
+        đo đã được gán cho nó."""
         # 4) EKF: dự đoán rồi cập nhật tuần tự theo từng cảm biến
         t0 = time.perf_counter()
-        tr.ekf.predict(FRAME_DT)
+        if predict:
+            tr.ekf.predict(FRAME_DT)
         used = []
         for d in dets:
-            if tr.ekf.update(d.sensor, d.z, d.R):
+            # mtt.py có thể nới cổng cho số đo đã được nó tự kiểm (``gate``).
+            if tr.ekf.update(d.sensor, d.z, d.R, gate=d.meta.get("gate", 16.0)):
                 used.append(d.sensor)
         self._t("ekf", t0)
 
@@ -211,11 +273,6 @@ class Pipeline:
         self._t("fuse", t0)
 
         # 6) Dự đoán quỹ đạo khi mất dấu
-        #
-        # Lịch sử đưa vào Transformer phải là các khung CÓ SỐ ĐO THẬT. Nếu
-        # đưa cả những khung mất dấu vào thì đầu vào chính là đường thẳng do
-        # EKF tự ngoại suy ra, và Transformer chỉ việc chép lại đường thẳng
-        # đó — nó không còn bù được gì nữa.
         t0 = time.perf_counter()
         tr.hist.append((tr.ekf.pos, tr.ekf.vel))
         pred = None
@@ -246,13 +303,13 @@ class Pipeline:
                 tr.blackout_pred, tr.blackout_hist = self._extend(
                     tr.blackout_pred, tr.blackout_hist)
             pred = tr.blackout_pred[:BLACKOUT_STEPS]
-            if pred is not None and 0 <= d < len(pred):
+            if 0 <= d < len(pred):
                 # Dùng dự đoán làm SỐ ĐO GIẢ để kéo vết bám theo đường cong
                 # đã học, thay vì để EKF trôi thẳng. Hiệp phương sai nới dần
                 # theo thời gian mất dấu: càng lâu càng bớt tin.
                 sd = 4.0 + 1.2 * d
                 tr.ekf.update("lidar", pred[d], np.eye(3) * sd ** 2, gate=1e9)
-            pred = None if pred is None else pred[max(0, d):max(0, d) + HOR]
+            pred = pred[max(0, d):max(0, d) + HOR]
         self._t("traj", t0)
 
         if used:
@@ -262,10 +319,17 @@ class Pipeline:
         else:
             tr.status = "ngoại suy"
 
-        self._t("total", t_all)
         kind, p = fused.top()
+        # Nghi bị đánh lừa (camera mâu thuẫn kéo dài với radar+RF) là lý do để
+        # HỎI người, không phải để im lặng. Bản cũ chỉ hỏi khi điểm tin cậy
+        # vượt 0,75 — mà chính mâu thuẫn lại kéo điểm tin cậy xuống, nên kẻ
+        # dán nhãn ngụy trang tuy không lừa được nhận dạng nhưng lại TẮT được
+        # cảnh báo: ở kịch bản S6 hệ thống chỉ hỏi người 0,3% số khung.
+        deception = fused.conflict >= DECEPTION_LEVEL
+        ask = (tr.confidence >= CONFIRM_THRESHOLD
+               or (deception and tr.confidence >= ALERT_THRESHOLD))
         return {
-            "tid": tid, "k": k, "pos": tr.ekf.pos.tolist(),
+            "tid": tr.tid, "k": k, "pos": tr.ekf.pos.tolist(),
             "vel": tr.ekf.vel.tolist(), "sigma": tr.ekf.pos_sigma(),
             "sensors": sorted(set(used)), "kind": kind, "kind_p": p,
             "probs": fused.probs().tolist(), "confidence": tr.confidence,
@@ -273,8 +337,8 @@ class Pipeline:
             "evidence": {k2: round(v, 3) for k2, v in fused.evidence.items()},
             "predicted": None if pred is None else pred.tolist(),
             "alert": tr.confidence >= ALERT_THRESHOLD,
-            "needs_operator": (tr.confidence >= CONFIRM_THRESHOLD
-                               and kind != "bird" and tr.operator is None),
+            "needs_operator": ask and kind != "bird" and tr.operator is None,
+            "deception_suspected": deception,
         }
 
     def predict_future(self, hist: list) -> np.ndarray:

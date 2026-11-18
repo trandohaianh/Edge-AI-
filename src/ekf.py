@@ -60,28 +60,95 @@ class EKF:
 
     @staticmethod
     def H(sensor: str, x: np.ndarray) -> np.ndarray:
-        """Jacobian tính bằng sai phân trung tâm.
+        """Jacobian giải tích của h(x).
 
-        Sai phân số ở đây rẻ (ma trận 6 cột) và loại bỏ hẳn một nguồn lỗi
-        khó tìm là đạo hàm giải tích viết sai.
+        Bản đầu dùng sai phân trung tâm (12 lần gọi h) để tránh viết sai đạo
+        hàm. Khi bám nhiều mục tiêu, Jacobian được gọi hàng nghìn lần mỗi
+        giây và trở thành chặng tốn nhất, nên đổi sang công thức giải tích.
+        Nỗi lo "viết sai đạo hàm" được giữ lại dưới dạng một bài test so
+        từng phần tử với ``H_numeric`` ở nhiều trạng thái ngẫu nhiên.
         """
+        p, v = x[:3], x[3:]
+        px, py, pz = p
+        r2 = max(float(p @ p), 1e-12)
+        r = np.sqrt(r2)
+        rho2 = max(px * px + py * py, 1e-12)
+        rho = np.sqrt(rho2)
+        d_az = np.array([-py / rho2, px / rho2, 0.0])
+        d_el = np.array([-px * pz / (r2 * rho), -py * pz / (r2 * rho), rho / r2])
+        if sensor == "lidar":
+            return np.hstack([np.eye(3), np.zeros((3, 3))])
+        if sensor == "rf":
+            J = np.zeros((1, 6))
+            J[0, :3] = d_az
+            return J
+        if sensor == "eo":
+            J = np.zeros((2, 6))
+            J[0, :3], J[1, :3] = d_az, d_el
+            return J
+        if sensor == "radar":
+            J = np.zeros((4, 6))
+            J[0, :3] = p / r
+            J[1, :3], J[2, :3] = d_az, d_el
+            J[3, :3] = v / r - float(v @ p) * p / (r2 * r)
+            J[3, 3:] = p / r
+            return J
+        raise ValueError(sensor)
+
+    @staticmethod
+    def H_numeric(sensor: str, x: np.ndarray) -> np.ndarray:
+        """Jacobian bằng sai phân trung tâm — chỉ để kiểm tra ``H``."""
         n = {"radar": 4, "eo": 2, "rf": 1, "lidar": 3}[sensor]
         J = np.zeros((n, 6))
         eps = 1e-4
         for i in range(6):
             dx = np.zeros(6)
             dx[i] = eps
-            hp = EKF.h(sensor, x + dx)
-            hm = EKF.h(sensor, x - dx)
-            d = hp - hm
+            d = EKF.h(sensor, x + dx) - EKF.h(sensor, x - dx)
             if sensor in ("radar", "eo", "rf"):
-                idx = {"radar": [1, 2], "eo": [0, 1], "rf": [0]}[sensor]
-                for j in idx:
+                for j in {"radar": [1, 2], "eo": [0, 1], "rf": [0]}[sensor]:
                     d[j] = _wrap(d[j])
             J[:, i] = d / (2 * eps)
         return J
 
     # ----------------------------------------------------------- cập nhật
+    def innovation(self, sensor: str, z: np.ndarray) -> np.ndarray:
+        y = z - self.h(sensor, self.x)
+        idx = {"radar": [1, 2], "eo": [0, 1], "rf": [0]}.get(sensor, [])
+        for j in idx:
+            y[j] = _wrap(y[j])
+        return y
+
+    def gate_terms(self, sensor: str):
+        """(h(x), H, H P Hᵀ) tính MỘT lần cho mỗi vết bám và mỗi loại cảm
+        biến, rồi dùng lại cho mọi số đo khi liên kết. Jacobian sai phân số
+        tốn 12 lần gọi h(); tính lại cho từng cặp vết–số đo là chỗ tốn nhất
+        của bản đầu."""
+        H = self.H(sensor, self.x)
+        return self.h(sensor, self.x), H, H @ self.P @ H.T
+
+    @staticmethod
+    def mahalanobis_from(sensor: str, terms, z: np.ndarray, R: np.ndarray) -> float:
+        hx, _, HPH = terms
+        y = z - hx
+        for j in {"radar": [1, 2], "eo": [0, 1], "rf": [0]}.get(sensor, []):
+            y[j] = _wrap(y[j])
+        try:
+            return float(y @ np.linalg.solve(HPH + R, y))
+        except np.linalg.LinAlgError:
+            return float("inf")
+
+    def mahalanobis(self, sensor: str, z: np.ndarray, R: np.ndarray) -> float:
+        """Khoảng cách Mahalanobis bình phương của số đo so với dự đoán, dùng
+        để LIÊN KẾT số đo với vết bám mà không cập nhật bộ lọc."""
+        y = self.innovation(sensor, z)
+        H = self.H(sensor, self.x)
+        S = H @ self.P @ H.T + R
+        try:
+            return float(y @ np.linalg.solve(S, y))
+        except np.linalg.LinAlgError:
+            return float("inf")
+
     def update(self, sensor: str, z: np.ndarray, R: np.ndarray,
                gate: float = 16.0) -> bool:
         """Trả về False nếu số đo bị cổng thống kê loại (nghi là nhiễu)."""

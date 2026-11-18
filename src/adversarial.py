@@ -22,15 +22,15 @@ from pathlib import Path
 
 import numpy as np
 
-from config import FRAME_DT, RADAR_DWELL, SEED
+from config import SEED
 from fusion import IdentityFuser, reliability
 from pipeline import md_logp, rf_logp, load_models
+from sensors import md_due, radar_snr, rf_due
 from radar_sim import micro_doppler
 from rf_sim import make_segment
 from scene import TARGET_KINDS, Weather, make_scenario, rotate_into_view, sense
 
 DATA = Path(__file__).resolve().parent.parent / "data"
-MD_EVERY, RF_EVERY = int(round(RADAR_DWELL / FRAME_DT)), 5
 
 
 class NaiveFuser(IdentityFuser):
@@ -71,7 +71,7 @@ def run(n_runs: int = 12, n_frames: int = 200, patch: bool = True):
         eo_last = -99
         for k in range(n_frames):
             dets = sense(tg, k, w, rng)
-            if k % RF_EVERY == 0:
+            if rf_due(k):
                 # I và Q phải lấy từ CÙNG một đoạn tín hiệu. Bản cũ gọi
                 # make_segment hai lần, lấy phần thực của đoạn này ghép với
                 # phần ảo của đoạn kia: cấu trúc pha giữa I và Q (thứ STFT
@@ -84,10 +84,9 @@ def run(n_runs: int = 12, n_frames: int = 200, patch: bool = True):
                 for d in dets:
                     if d.sensor == "rf":
                         d.cls_logp = lp
-            if k % MD_EVERY == 0:
+            if md_due(k):
                 rr = float(np.linalg.norm(tg.pos[k]))
-                snr = float(np.clip(30 - 20 * np.log10(max(rr, 100) / 300), 2, 26))
-                lp = md_logp(md_net, micro_doppler(tg.kind, rng, snr_db=snr))
+                lp = md_logp(md_net, micro_doppler(tg.kind, rng, snr_db=radar_snr(rr)))
                 for d in dets:
                     if d.sensor == "radar":
                         d.cls_logp = lp

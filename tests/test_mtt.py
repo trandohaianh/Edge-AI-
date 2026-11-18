@@ -1,0 +1,139 @@
+"""Kiểm thử bám nhiều mục tiêu (mtt.py) và các thành phần nó dựa vào."""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+import evaluate_mtt as EM                             # noqa: E402
+import pipeline as PL                                 # noqa: E402
+from ekf import EKF                                   # noqa: E402
+from mtt import CHI2_GATE, MultiTracker, _coarse_gate  # noqa: E402
+from pipeline import Track                            # noqa: E402
+from scene import Detection, Weather                  # noqa: E402
+from sensors import RawProvider, false_alarms, sense_all  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def models():
+    return PL.load_models()
+
+
+def test_jacobian_giai_tich_khop_sai_phan_so():
+    rng = np.random.default_rng(0)
+    for _ in range(300):
+        x = np.concatenate([rng.uniform(-3000, 3000, 2), rng.uniform(5, 600, 1),
+                            rng.uniform(-40, 40, 3)])
+        for s in ("radar", "eo", "rf", "lidar"):
+            np.testing.assert_allclose(EKF.H(s, x), EKF.H_numeric(s, x),
+                                       rtol=1e-5, atol=1e-7)
+
+
+def test_loc_tho_khong_bo_cap_nao_qua_cong_chi2():
+    """Bộ lọc thô chỉ được bỏ những cặp đằng nào cũng trượt cổng χ²."""
+    rng = np.random.default_rng(1)
+    w = Weather()
+    trs = []
+    for i in range(12):
+        p = np.array([rng.uniform(-2500, 2500), rng.uniform(-2500, 2500), rng.uniform(30, 300)])
+        e = EKF(p, rng.normal(0, 10, 3), p_var=rng.uniform(4, 3000), v_var=rng.uniform(4, 400))
+        trs.append(Track(i, e))
+    dets = false_alarms(rng, 40, w)
+    for t in trs[:6]:                                 # thêm số đo sát vài vết
+        r = float(np.linalg.norm(t.ekf.pos))
+        az = float(np.arctan2(t.ekf.pos[1], t.ekf.pos[0]))
+        el = float(np.arcsin(t.ekf.pos[2] / r))
+        dets.append(Detection("radar", np.array([r + 5, az, el, 0.0]), np.diag([9, 1e-4, 2e-4, 0.06])))
+        dets.append(Detection("rf", np.array([az + 0.01]), np.array([[0.003]])))
+    for sensor in ("radar", "rf"):
+        D = [d for d in dets if d.sensor == sensor]
+        near = _coarse_gate(sensor, trs, D)
+        for i, t in enumerate(trs):
+            for j, d in enumerate(D):
+                if t.ekf.mahalanobis(sensor, d.z, d.R) < CHI2_GATE[sensor]:
+                    assert near[i, j], (sensor, i, j)
+
+
+def test_batch_cho_cung_ket_qua_nhu_tung_cai(models):
+    rf, md, _ = models
+    rng = np.random.default_rng(2)
+    from sensors import md_spec, rf_iq
+    specs = [md_spec(k, 800.0, rng, 0.0) for k in ("multirotor", "bird", "clutter")]
+    iqs = [rf_iq(e, rng) for e in (True, False, True)]
+    for s, lp in zip(specs, PL.md_logp_batch(md, specs)):
+        np.testing.assert_allclose(lp, PL.md_logp(md, s), atol=1e-5)
+    for x, lp in zip(iqs, PL.rf_logp_batch(rf, iqs)):
+        np.testing.assert_allclose(lp, PL.rf_logp(rf, x), atol=1e-5)
+
+
+def _run(models, spec, n, seed, clutter=1.0, w=Weather()):
+    rng = np.random.default_rng(seed)
+    tgs = EM.build_targets(spec, n, rng)
+    prov = RawProvider(tgs, w, rng)
+    mt = MultiTracker(models, raw_provider=prov)
+    hist = []
+    for k in range(n):
+        dets = sense_all(tgs, k, w, rng, eo_az=mt.turret.az, clutter_rate=clutter, raw=False)
+        hist.append((mt.step(dets, w, k), [t.pos[k] for t in tgs]))
+        mt.point_camera(k)
+    return mt, hist, prov
+
+
+def test_bam_dung_so_muc_tieu_trong_bao_dong_gia(models):
+    spec = EM._fan(["multirotor", "fixed_wing", "bird"])
+    mt, hist, _ = _run(models, spec, 90, seed=11, clutter=2.0)
+    for msgs, truth in hist[30:]:
+        assert len(msgs) == 3
+        for p in truth:
+            assert min(np.linalg.norm(np.array(m["pos"]) - p) for m in msgs) < 30.0
+    kinds = sorted(m["kind"] for m in hist[-1][0])
+    assert kinds == sorted(["multirotor", "fixed_wing", "bird"])
+    assert all(not m["needs_operator"] for m in hist[-1][0] if m["kind"] == "bird")
+
+
+def test_chi_bao_dong_gia_thi_khong_xac_nhan_vet_nao(models):
+    w = Weather()
+    rng = np.random.default_rng(12)
+    mt = MultiTracker(models)
+    confirmed = 0
+    for k in range(120):
+        confirmed += len(mt.step(false_alarms(rng, 3.0, w), w, k))
+    assert confirmed == 0
+    assert mt.stats["spawned"] > 200 and mt.stats["confirmed"] == 0
+
+
+def test_hai_drone_sat_nhau_giu_dung_hai_vet_khong_doi_id(models):
+    spec = [dict(kind="multirotor", r0=900, az=0.0), dict(kind="multirotor", r0=930, az=2.0)]
+    mt, hist, _ = _run(models, spec, 100, seed=13)
+    owner = []
+    for msgs, truth in hist[30:]:
+        assert len(msgs) == 2
+        ids = []
+        for p in truth:
+            d = [np.linalg.norm(np.array(m["pos"]) - p) for m in msgs]
+            ids.append(msgs[int(np.argmin(d))]["tid"])
+        assert ids[0] != ids[1]
+        owner.append(tuple(ids))
+    assert len(set(owner)) == 1                       # không đổi ID
+
+
+def test_chi_vet_da_xac_nhan_moi_lay_du_lieu_tho(models):
+    """Báo động giả (vết tạm) không được tiêu tốn mạng nặng."""
+    spec = EM._fan(["multirotor"])
+    mt, hist, prov = _run(models, spec, 60, seed=14, clutter=3.0)
+    # 1 mục tiêu: radar mỗi 3 khung, RF mỗi 5 khung, trừ vài khung đầu chưa xác nhận
+    assert prov.calls["spec"] <= 60 // 3 + 1
+    assert prov.calls["iq"] <= 60 // 5 + 1
+    assert prov.calls["spec"] >= 15
+
+
+def test_ospa():
+    X = np.array([[0.0, 0, 0], [100, 0, 0]])
+    assert EM.ospa(X, X) == 0.0
+    assert EM.ospa(X, X[:1]) == pytest.approx(EM.OSPA_C / 2)
+    assert EM.ospa(X, np.zeros((0, 3))) == EM.OSPA_C

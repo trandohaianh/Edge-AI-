@@ -44,6 +44,8 @@ def reliability(sensor: str, w: Weather, rng_m: float | None = None) -> float:
 
 
 PER_SENSOR_CAP = 4.0   # nats: trần bằng chứng một cảm biến được phép dồn
+CONFLICT_MARGIN = 0.5  # nats: radar+RF phải chê lớp của camera ít nhất chừng này
+DECEPTION_LEVEL = 0.5  # mức mâu thuẫn từ đó coi là nghi bị đánh lừa
 
 
 @dataclass
@@ -92,14 +94,24 @@ class IdentityFuser:
             contrib[d.sensor] = rel * (lp - lp.mean())
 
         # Phát hiện mâu thuẫn: EO chỉ một đằng, radar+RF chỉ một nẻo.
+        #
+        # Ba trường hợp, không phải hai. Bản cũ so argmax của radar+RF với
+        # argmax của camera; nhưng RF chỉ nói "drone" chứ không phân biệt đa
+        # cánh quạt với cánh bằng, nên khi chỉ có RF, hai lớp đó HOÀ nhau và
+        # argmax luôn chọn lớp đứng đầu ("đa cánh quạt"). Kết quả: mỗi lần
+        # camera nói đúng "cánh bằng" lại bị tính là mâu thuẫn và bị hạ quyền.
+        # Giờ chỉ gọi là mâu thuẫn khi bằng chứng vật lý thật sự CHÊ lớp mà
+        # camera chọn; vật lý không phân biệt được thì không kết luận gì.
         phys = [c for k, c in contrib.items() if k in ("radar", "rf")]
         if phys and "eo" in contrib:
-            a = int(np.argmax(sum(phys)))
+            ph = sum(phys)
             b = int(np.argmax(contrib["eo"]))
-            if a != b:
+            gap = float(ph.max() - ph[b])
+            second = float(np.sort(ph)[-2])
+            if gap > CONFLICT_MARGIN:
                 s.conflict = min(1.0, s.conflict + 0.12)
                 contrib["eo"] = contrib["eo"] * 0.25   # hạ quyền camera khi nghi bị lừa
-            else:
+            elif gap < 1e-9 and ph.max() - second > CONFLICT_MARGIN:
                 s.conflict = max(0.0, s.conflict - 0.05)
 
         # Dồn bằng chứng THEO TỪNG CẢM BIẾN, mỗi cảm biến một trần riêng.

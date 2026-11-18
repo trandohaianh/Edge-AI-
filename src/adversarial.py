@@ -27,7 +27,7 @@ from fusion import IdentityFuser, reliability
 from pipeline import md_logp, rf_logp, load_models
 from radar_sim import micro_doppler
 from rf_sim import make_segment
-from scene import TARGET_KINDS, Weather, make_scenario, sense
+from scene import TARGET_KINDS, Weather, make_scenario, rotate_into_view, sense
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 MD_EVERY, RF_EVERY = int(round(RADAR_DWELL / FRAME_DT)), 5
@@ -61,17 +61,26 @@ def run(n_runs: int = 12, n_frames: int = 200, patch: bool = True):
         tg = make_scenario(n_frames, rng, w, kinds=["multirotor"],
                            patch_ids={0} if patch else set(),
                            patterns=["approach"], r0=900.0)[0]
+        # r0 chỉ chốt CỰ LY; phương vị vẫn ngẫu nhiên nên bản cũ có tới 2/3
+        # số lần chạy mục tiêu nằm ngoài góc nhìn camera và bị bỏ qua khi
+        # chấm điểm — kết quả "100%" thực chất dựa trên 2–4 lần chạy. Xoay
+        # mục tiêu vào tầm camera (như dashboard) để cả 12 lần đều tính.
+        rotate_into_view(tg, rng.uniform(-np.deg2rad(25), np.deg2rad(25)))
         fd, fn = IdentityFuser(), NaiveFuser()
         eo_lp = np.zeros(3)
         eo_last = -99
         for k in range(n_frames):
             dets = sense(tg, k, w, rng)
             if k % RF_EVERY == 0:
-                lp = rf_logp(rf_net, np.stack([
-                    make_segment("drone_ctrl" if tg.emits_rf else "noise", rng,
-                                 snr_db=rng.uniform(4, 20)).real.astype(np.float32),
-                    make_segment("drone_ctrl" if tg.emits_rf else "noise", rng,
-                                 snr_db=rng.uniform(4, 20)).imag.astype(np.float32)]))
+                # I và Q phải lấy từ CÙNG một đoạn tín hiệu. Bản cũ gọi
+                # make_segment hai lần, lấy phần thực của đoạn này ghép với
+                # phần ảo của đoạn kia: cấu trúc pha giữa I và Q (thứ STFT
+                # dựa vào để thấy tần số dương/âm) bị phá, mạng RF nhận một
+                # tín hiệu không thể có ngoài đời.
+                seg = make_segment("drone_ctrl" if tg.emits_rf else "noise", rng,
+                                   snr_db=rng.uniform(4, 20))
+                lp = rf_logp(rf_net, np.stack([seg.real.astype(np.float32),
+                                               seg.imag.astype(np.float32)]))
                 for d in dets:
                     if d.sensor == "rf":
                         d.cls_logp = lp
@@ -111,11 +120,13 @@ def main():
         "clean_defended_acc": round(clean["defended"], 4),
         "clean_eo_only_acc": round(clean["eo_only"], 4),
         "n_frames_scored": n,
+        "n_runs": 12,
         "attack": ("Nhãn ngụy trang khiến bộ nhận dạng ảnh đọc sai lớp với "
                    "độ tự tin 0,92."),
     }
     print(json.dumps(res, indent=1, ensure_ascii=False))
-    json.dump(res, open(DATA / "adversarial.json", "w"), indent=1, ensure_ascii=False)
+    with open(DATA / "adversarial.json", "w", encoding="utf-8") as f:
+        json.dump(res, f, indent=1, ensure_ascii=False)
 
 
 if __name__ == "__main__":

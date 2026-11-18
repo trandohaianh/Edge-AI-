@@ -57,7 +57,7 @@ def _norm(P: np.ndarray) -> np.ndarray:
 
 def micro_doppler(kind: str, rng: np.random.Generator, snr_db: float | None = None,
                   v_radial: float | None = None, rain: float = 0.0) -> np.ndarray:
-    """Spectrogram micro-Doppler chuẩn hóa [64,64] của một mục tiêu."""
+    """Spectrogram micro-Doppler chuẩn hóa MD_SHAPE = [64,128] của một mục tiêu."""
     if snr_db is None:
         snr_db = rng.uniform(0, 22)
     if v_radial is None:
@@ -127,7 +127,7 @@ def build_md_dataset(n_per_class: int, seed: int, snr_range=(0, 22), rain_p: flo
             rain = rng.uniform(0.2, 1.0) if rng.random() < rain_p else 0.0
             xs.append(micro_doppler(name, rng, snr_db=rng.uniform(*snr_range), rain=rain))
             ys.append(ci)
-    X = np.asarray(xs, dtype=np.float32)[:, None]   # [N,1,64,64]
+    X = np.asarray(xs, dtype=np.float32)[:, None]   # [N,1,64,128]
     y = np.asarray(ys, dtype=np.int64)
     idx = rng.permutation(len(y))
     return X[idx], y[idx]

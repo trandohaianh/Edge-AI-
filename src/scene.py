@@ -212,6 +212,22 @@ def sense(target: Target, k: int, w: Weather, rng: np.random.Generator,
     return out
 
 
+def rotate_into_view(target: Target, az_rad: float) -> Target:
+    """Xoay quỹ đạo quanh trạm để điểm xuất phát nằm ở phương vị ``az_rad``.
+
+    Dùng cho các thí nghiệm cần camera vào cuộc (EO/IR chỉ nhìn được một
+    góc hẹp): trạm thật cũng quay đầu quang điện về phía radar báo có mục
+    tiêu. Xoay cả vị trí lẫn vận tốc nên tốc độ và hình dạng quỹ đạo giữ
+    nguyên.
+    """
+    az0 = np.arctan2(target.pos[0, 1], target.pos[0, 0])
+    c, s_ = np.cos(az_rad - az0), np.sin(az_rad - az0)
+    R = np.array([[c, -s_], [s_, c]])
+    target.pos[:, :2] = target.pos[:, :2] @ R.T
+    target.vel[:, :2] = target.vel[:, :2] @ R.T
+    return target
+
+
 def make_scenario(n_frames: int, rng: np.random.Generator, w: Weather,
                   kinds: list[str] | None = None, patch_ids: set[int] | None = None,
                   patterns: list[str] | None = None,

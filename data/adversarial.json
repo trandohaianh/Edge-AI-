@@ -1,9 +1,10 @@
 {
  "defended_acc": 1.0,
- "naive_acc": 0.0526,
+ "naive_acc": 0.0338,
  "eo_only_acc": 0.0,
  "clean_defended_acc": 1.0,
  "clean_eo_only_acc": 1.0,
- "n_frames_scored": 532,
+ "n_frames_scored": 1596,
+ "n_runs": 12,
  "attack": "Nhãn ngụy trang khiến bộ nhận dạng ảnh đọc sai lớp với độ tự tin 0,92."
 }

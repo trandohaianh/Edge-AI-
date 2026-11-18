@@ -166,7 +166,7 @@ def main(n_runs: int = 8, n_frames: int = 220):
     merged = {}
     for p in all_lat:
         for k, v in p.timing.items():
-            merged.setdefault(k, []).extend(v[3:])
+            merged.setdefault(k, []).extend(list(v)[3:])
     lat = {}
     for k, v in merged.items():
         a = np.asarray(v)
@@ -180,7 +180,8 @@ def main(n_runs: int = 8, n_frames: int = 220):
            "note": ("Đo trên CPU x86 2 nhân trong container, KHÔNG phải trên "
                     "Jetson Orin. Đã bỏ 3 khung khởi động đầu mỗi lần chạy. "
                     "Xem phần hạn chế của báo cáo.")}
-    json.dump(res, open(DATA / "scenario_results.json", "w"), indent=1, ensure_ascii=False)
+    with open(DATA / "scenario_results.json", "w", encoding="utf-8") as f:
+        json.dump(res, f, indent=1, ensure_ascii=False)
     print(json.dumps(lat["total"], indent=1))
     print(f"done {time.time()-t0:.0f}s")
     return res

@@ -85,13 +85,13 @@ def main():
     old = {}
     p_old = DATA / "rf_metrics.json"
     if p_old.exists():
-        old = json.load(open(p_old))
+        old = json.load(open(p_old, encoding="utf-8"))
     json.dump({"test_acc": float(acc), "confusion": cm.tolist(),
                "classes": RF_CLASSES, "params": count_params(model),
                "by_snr": by_snr, "arch": "STFT + CNN 2D",
                "ablation_raw_iq_1dcnn_acc": old.get("test_acc"),
                "n_test": int(len(yte))},
-              open(DATA / "rf_metrics.json", "w"), indent=1)
+              open(DATA / "rf_metrics.json", "w", encoding="utf-8"), indent=1)
     print(f"[rf2] done {time.time()-t0:.0f}s")
 
 

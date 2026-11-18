@@ -151,8 +151,8 @@ def fig_rfspec():
 
 # ---------------------------------------------------------- 3. độ chính xác
 def fig_accuracy():
-    rf = json.load(open(DATA / "rf_metrics.json"))
-    md = json.load(open(DATA / "md_metrics.json"))
+    rf = json.load(open(DATA / "rf_metrics.json", encoding="utf-8"))
+    md = json.load(open(DATA / "md_metrics.json", encoding="utf-8"))
     fig, axes = plt.subplots(1, 3, figsize=(10.2, 3.0))
 
     def cm(ax, m, classes, title):
@@ -192,8 +192,8 @@ def fig_accuracy():
 
 # ------------------------------------------------------------- 4. bám & mất dấu
 def fig_tracking():
-    sc = json.load(open(DATA / "scenario_results.json"))
-    tj = json.load(open(DATA / "traj_metrics.json"))
+    sc = json.load(open(DATA / "scenario_results.json", encoding="utf-8"))
+    tj = json.load(open(DATA / "traj_metrics.json", encoding="utf-8"))
     fig, axes = plt.subplots(1, 2, figsize=(10.2, 3.2))
 
     ax = axes[0]
@@ -228,7 +228,7 @@ def fig_tracking():
 
 # ----------------------------------------------------------------- 5. độ trễ
 def fig_latency():
-    sc = json.load(open(DATA / "scenario_results.json"))
+    sc = json.load(open(DATA / "scenario_results.json", encoding="utf-8"))
     lat = sc["latency_ms"]
     names = {"preproc": T("tiền xử lý", "pre-process"), "rf_net": T("mạng RF", "RF net"),
              "md_net": T("mạng micro-Doppler", "micro-Doppler net"),
@@ -267,7 +267,7 @@ def fig_latency():
 
 # ------------------------------------------------------------- 6. kịch bản
 def fig_scenarios():
-    sc = json.load(open(DATA / "scenario_results.json"))["scenarios"]
+    sc = json.load(open(DATA / "scenario_results.json", encoding="utf-8"))["scenarios"]
     short = {"S1": T("Trời quang", "Clear"), "S2": T("Đêm + sương mù", "Night + fog"),
              "S3": T("Nhiễu RF", "RF jamming"), "S4": T("Mưa to", "Heavy rain"),
              "S5": T("Chim", "Bird"), "S6": T("Nhãn ngụy trang", "Adversarial patch"),
@@ -305,7 +305,7 @@ def fig_scenarios():
 
 # ---------------------------------------------------- 7. chống đánh lừa camera
 def fig_adversarial():
-    d = json.load(open(DATA / "adversarial.json"))
+    d = json.load(open(DATA / "adversarial.json", encoding="utf-8"))
     fig, ax = plt.subplots(figsize=(7.2, 3.0))
     names = [T("Hợp nhất có hạ quyền\nkhi phát hiện mâu thuẫn", "Fusion with conflict\ndown-weighting"),
              T("Hợp nhất cộng đều\n(không phòng vệ)", "Naive equal-weight\nfusion"),

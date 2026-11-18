@@ -12,6 +12,7 @@ ngân sách 50 ms trên chip nhúng.
 from __future__ import annotations
 
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -35,18 +36,53 @@ MD_TO_TARGET = {"multirotor": "multirotor", "fixed_wing": "fixed_wing",
 HIST, HOR = 20, 10
 GAP_MIN = 3        # số khung gián đoạn tối thiểu mới coi là mất dấu
 POS_SCALE, VEL_SCALE = 100.0, 30.0
+BLACKOUT_STEPS = 90   # số khung tối đa có dự đoán khi mất dấu (9 s)
+HIST_KEEP = 256       # số khung lịch sử giữ lại cho mỗi vết bám
+TIMING_KEEP = 10_000  # số mẫu thời gian giữ lại cho mỗi chặng
+MODEL_FILES = ("rf_model.pt", "md_model.pt", "traj_model.pt")
 
 
-def load_models():
+def load_models(allow_untrained: bool = False, data_dir: Path | None = None):
+    """Nạp ba mô hình từ ``data/``.
+
+    Thiếu tệp trọng số thì DỪNG, trừ khi gọi rõ ``allow_untrained=True``.
+    Bản cũ lặng lẽ chạy tiếp với trọng số ngẫu nhiên: dashboard vẫn hiện số,
+    nhưng mọi nhận dạng là vô nghĩa — với một hệ giám sát đó là kiểu hỏng tệ
+    nhất vì không ai biết là nó đang hỏng.
+
+    ``weights_only=True`` để ``torch.load`` không thực thi mã pickle tuỳ ý
+    nằm trong tệp .pt (tệp trọng số là dữ liệu, không phải chương trình).
+    """
+    data_dir = data_dir or DATA
     rf = RFNetSTFT(len(RF_CLASSES))
     md = MicroDopplerNet(len(RADAR_CLASSES))
     tj = TrajTransformer(horizon=HOR)
-    for m, f in ((rf, "rf_model.pt"), (md, "md_model.pt"), (tj, "traj_model.pt")):
-        p = DATA / f
+    missing = []
+    for m, f in zip((rf, md, tj), MODEL_FILES):
+        p = data_dir / f
         if p.exists():
-            m.load_state_dict(torch.load(p, map_location="cpu"))
+            m.load_state_dict(torch.load(p, map_location="cpu", weights_only=True))
+        else:
+            missing.append(f)
         m.eval()
+    if missing and not allow_untrained:
+        raise FileNotFoundError(
+            f"thiếu trọng số {missing} trong {data_dir}; chạy lại các bước huấn "
+            "luyện trong README, hoặc gọi load_models(allow_untrained=True) nếu "
+            "chỉ cần thử luồng xử lý")
+    for m in (rf, md, tj):
+        m.trained = not missing
     return rf, md, tj
+
+
+def warmup(models) -> None:
+    """Chạy mỗi mô hình một lần trên đầu vào giả để lần gọi thật đầu tiên
+    không phải trả chi phí cấp phát bộ nhớ và chọn kernel."""
+    rf, md, tj = models
+    with torch.no_grad():
+        rf(torch.zeros(1, 2, 2048))
+        md(torch.zeros(1, 1, 64, 128))
+        tj(torch.zeros(1, HIST, 6))
 
 
 def md_logp(md: MicroDopplerNet, spec: np.ndarray) -> np.ndarray:
@@ -87,8 +123,10 @@ class Track:
     tid: int
     ekf: EKF
     fuser: IdentityFuser = field(default_factory=IdentityFuser)
-    hist: list = field(default_factory=list)      # (pos, vel) mọi khung
-    meas_hist: list = field(default_factory=list)  # CHỈ các khung có số đo thật
+    # (pos, vel) mọi khung — đúng phân bố mà Transformer được huấn luyện
+    # (train_traj_ekf.py lấy trạng thái EKF ở MỌI khung). Giới hạn độ dài để
+    # vết bám chạy lâu không ăn dần bộ nhớ thiết bị biên.
+    hist: deque = field(default_factory=lambda: deque(maxlen=HIST_KEEP))
     last_seen: int = 0
     confidence: float = 0.0
     status: str = "mới"
@@ -98,6 +136,7 @@ class Track:
     blackout_pos: np.ndarray | None = None
     blackout_vel: np.ndarray | None = None
     blackout_pred: np.ndarray | None = None
+    blackout_hist: list | None = None              # lịch sử để nối dự đoán tiếp
 
 
 class Pipeline:
@@ -107,9 +146,9 @@ class Pipeline:
     def __init__(self, models=None):
         self.rf, self.md, self.tj = models or load_models()
         self.tracks: dict[int, Track] = {}
-        self.timing: dict[str, list] = {k: [] for k in
-                                        ["preproc", "rf_net", "md_net", "assoc",
-                                         "ekf", "fuse", "traj", "total"]}
+        self.timing: dict[str, deque] = {
+            k: deque(maxlen=TIMING_KEEP) for k in
+            ["preproc", "rf_net", "md_net", "assoc", "ekf", "fuse", "traj", "total"]}
 
     # ---------------------------------------------------------------- helpers
     def _t(self, key, t0):
@@ -182,9 +221,9 @@ class Pipeline:
         pred = None
         if used:
             tr.last_seen = k
-            tr.meas_hist.append((tr.ekf.pos, tr.ekf.vel))
             tr.blackout_from = None
             tr.blackout_pred = None
+            tr.blackout_hist = None
         elif (k - tr.last_seen) >= GAP_MIN and len(tr.hist) > HIST:
             # Chỉ coi là MẤT DẤU khi gián đoạn kéo dài: cảm biến rớt một hai
             # khung là chuyện thường, EKF tự lo được. Gọi Transformer vào lúc
@@ -194,9 +233,19 @@ class Pipeline:
                 i0 = len(tr.hist) - 1 - (k - tr.last_seen)
                 tr.blackout_pos = tr.hist[i0][0]
                 tr.blackout_vel = tr.hist[i0][1]
-                tr.blackout_pred = self.rollout(tr.hist[:i0 + 1], 90)
-            pred = tr.blackout_pred
+                tr.blackout_hist = list(tr.hist)[max(0, i0 + 1 - HIST):i0 + 1]
+                tr.blackout_pred = np.zeros((0, 3))
             d = k - tr.blackout_from - 1       # đã mất dấu bao nhiêu khung
+            # Nối dự đoán DẦN DẦN, mỗi lần một đoạn 1 giây, chỉ khi cần tới.
+            # Bản cũ tính trọn 9 giây (9 lần gọi Transformer) ngay trong khung
+            # đầu tiên mất dấu, tạo một gai thời gian xử lý đúng lúc hệ thống
+            # đang khó khăn nhất. Kết quả số học giống hệt (cùng một chuỗi
+            # nối), chỉ chia đều chi phí ra theo thời gian.
+            need = min(BLACKOUT_STEPS, max(0, d) + HOR)
+            while len(tr.blackout_pred) < need:
+                tr.blackout_pred, tr.blackout_hist = self._extend(
+                    tr.blackout_pred, tr.blackout_hist)
+            pred = tr.blackout_pred[:BLACKOUT_STEPS]
             if pred is not None and 0 <= d < len(pred):
                 # Dùng dự đoán làm SỐ ĐO GIẢ để kéo vết bám theo đường cong
                 # đã học, thay vì để EKF trôi thẳng. Hiệp phương sai nới dần
@@ -238,6 +287,13 @@ class Pipeline:
             d = self.tj(torch.from_numpy(x[None])).numpy()[0]
         return p0[None] + d * POS_SCALE
 
+    def _extend(self, pred: np.ndarray, hist: list):
+        """Nối thêm một đoạn HOR bước vào chuỗi dự đoán."""
+        p = self.predict_future(hist)
+        v = np.gradient(p, FRAME_DT, axis=0)
+        hist = (hist + [(p[i], v[i]) for i in range(len(p))])[-HIST:]
+        return np.concatenate([pred, p]), hist
+
     def rollout(self, hist: list, n_steps: int) -> np.ndarray:
         """Nối nhiều lần dự đoán để phủ quãng mất dấu dài hơn 1 giây.
 
@@ -245,21 +301,17 @@ class Pipeline:
         sử cho vòng sau. Sai số dồn lại nên càng về sau càng kém — báo cáo
         ghi rõ sai số theo từng mốc thời gian mất dấu.
         """
-        hist = list(hist[-HIST:])
-        out = []
+        hist = list(hist)[-HIST:]
+        out = np.zeros((0, 3))
         while len(out) < n_steps:
-            p = self.predict_future(hist)
-            v = np.gradient(p, FRAME_DT, axis=0)
-            out.extend(list(p))
-            hist = hist + [(p[i], v[i]) for i in range(len(p))]
-            hist = hist[-HIST:]
-        return np.asarray(out[:n_steps])
+            out, hist = self._extend(out, hist)
+        return out[:n_steps]
 
     # ----------------------------------------------------------------- tổng kết
     def latency_report(self) -> dict:
         out = {}
         for k, v in self.timing.items():
-            if not v:
+            if not len(v):
                 continue
             a = np.asarray(v)
             out[k] = {"mean_ms": round(float(a.mean()), 3),

@@ -1,0 +1,11 @@
+.git
+**/__pycache__
+.pytest_cache
+.venv
+.env
+TAI-KHOAN.md
+docs/
+reports/
+logs/
+tests/
+data/*.npz

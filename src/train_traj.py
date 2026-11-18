@@ -156,7 +156,7 @@ def main():
     }
     print(json.dumps(res, indent=1))
     torch.save(model.state_dict(), DATA / "traj_model.pt")
-    json.dump(res, open(DATA / "traj_metrics.json", "w"), indent=1)
+    json.dump(res, open(DATA / "traj_metrics.json", "w", encoding="utf-8"), indent=1)
     print(f"[traj] done {time.time()-t0:.0f}s")
 
 

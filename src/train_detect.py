@@ -100,7 +100,7 @@ def run(kind: str):
     json.dump({"test_acc": float(acc), "per_class": per,
                "confusion": cm.tolist(), "classes": classes,
                "params": count_params(model), "n_test": int(len(yte))},
-              open(DATA / f"{kind}_metrics.json", "w"), indent=1)
+              open(DATA / f"{kind}_metrics.json", "w", encoding="utf-8"), indent=1)
     np.savez_compressed(DATA / f"{kind}_test.npz", X=Xte[:1500], y=yte[:1500])
     print(f"[{kind}] done in {time.time()-t0:.0f}s")
 

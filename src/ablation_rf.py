@@ -28,7 +28,7 @@ for ep in range(ep_n):
 m.load_state_dict(st); p, acc = evaluate(m, Xte, yte)
 print("[ablation raw I/Q 1D-CNN] TEST acc=%.4f params=%d" % (acc, count_params(m)))
 print(confusion(yte, p, 4))
-mt = json.load(open(DATA / "rf_metrics.json"))
+mt = json.load(open(DATA / "rf_metrics.json", encoding="utf-8"))
 mt["ablation_raw_iq_1dcnn_acc"] = float(acc)
 mt["ablation_note"] = "Cùng bộ dữ liệu, cùng số epoch, cùng số tham số (62k)."
-json.dump(mt, open(DATA / "rf_metrics.json", "w"), indent=1)
+json.dump(mt, open(DATA / "rf_metrics.json", "w", encoding="utf-8"), indent=1)

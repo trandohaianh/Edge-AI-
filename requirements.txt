@@ -6,4 +6,5 @@ fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2.6
 pytest>=8.0
+httpx>=0.27          # cho fastapi.testclient trong tests/
 pillow>=10.0

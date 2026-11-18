@@ -16,6 +16,11 @@ header h1{margin:0;font-size:16px;font-weight:800;letter-spacing:.02em}
 header h1 b{color:var(--red)}
 .pill{font:600 11px/1 var(--mono);padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
 .pill.live{color:var(--ok);border-color:#1d4731}
+.pill.down{color:var(--red);border-color:#5a1a28}
+.banner{margin:14px 14px 0;padding:10px 14px;border-radius:8px;border:1px solid #6b3030;background:#2e1a1a;color:#f3b0b0;font-weight:600;display:none}
+.ask{display:none;margin:0 0 10px;padding:8px 11px;border-radius:7px;border:1px solid #4a3a16;background:#1d1708;color:var(--warn);font-weight:700}
+.msg{min-height:18px;margin-top:8px;font-size:12px;color:var(--muted)}
+.msg.err{color:#f3b0b0}
 .ethic{margin-left:auto;font:600 11px/1.4 var(--sans);color:var(--warn);
        border:1px solid #4a3a16;background:#1d1708;padding:7px 11px;border-radius:6px;max-width:430px}
 .wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.85fr);gap:14px;padding:14px}
@@ -54,7 +59,7 @@ th{color:var(--muted);font-weight:600}
 <body>
 <header>
   <h1>EDGE AI · <b>GIÁM SÁT ĐA CẢM BIẾN</b></h1>
-  <span class="pill live" id="live">● đang chạy</span>
+  <span class="pill" id="live" role="status" aria-live="polite">○ đang kết nối…</span>
   <span class="pill" id="scn">—</span>
   <span class="pill" id="wx">—</span>
   <div class="ethic">⚠ Hệ thống chỉ giám sát, nhận dạng, bám quỹ đạo và đề xuất cho người trực ca.
@@ -62,6 +67,7 @@ th{color:var(--muted);font-weight:600}
     <span class="en">Surveillance and human decision support only — no autonomous engagement.</span></div>
 </header>
 
+<div class="banner" id="banner" role="alert"></div>
 <div class="wrap">
   <div>
     <div class="card">
@@ -110,12 +116,14 @@ th{color:var(--muted);font-weight:600}
     <div class="card" style="margin-top:14px">
       <h2>Quyết định của người trực ca</h2>
       <p class="note" style="margin-top:0">Hệ thống chỉ đề xuất. Mọi quyết định do người đưa ra và được ghi nhật ký.</p>
+      <div class="ask" id="ask" role="status">● Hệ thống đề nghị chuyên viên xem xét vết bám này</div>
       <div class="row">
         <button class="btn ok" id="bok">✓ Xác nhận mục tiêu</button>
         <button class="btn no" id="bno">✕ Bỏ qua</button>
       </div>
-      <table style="margin-top:12px"><thead><tr><th>Khung</th><th>Hành động</th><th>Nhận dạng</th><th>Tin cậy</th></tr></thead>
-        <tbody id="audit"><tr><td colspan="4" style="color:var(--muted)">chưa có thao tác nào</td></tr></tbody></table>
+      <div class="msg" id="actmsg" aria-live="polite"></div>
+      <table style="margin-top:12px"><thead><tr><th>Khung</th><th>Hành động</th><th>Người trực</th><th>Nhận dạng</th><th>Tin cậy</th></tr></thead>
+        <tbody id="audit"><tr><td colspan="5" style="color:var(--muted)">chưa có thao tác nào</td></tr></tbody></table>
     </div>
 
     <div class="card" style="margin-top:14px">
@@ -131,12 +139,32 @@ const SC=[["clear","Trời quang"],["fog_night","Đêm + sương mù"],["jamming
 const KIND={multirotor:"Drone đa cánh quạt",fixed_wing:"Drone cánh bằng",bird:"Chim"};
 const SNAME={radar:"RADAR",rf:"RF",eo:"EO/IR",lidar:"LiDAR"};
 const scen=document.getElementById('scen');
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Mã truy cập (khi máy chủ đặt EDGE_API_TOKEN): hỏi một lần, giữ trong
+// sessionStorage của tab này, không bao giờ đưa lên URL.
+function token(){try{return sessionStorage.getItem('edge_token')||'';}catch(e){return '';}}
+async function post(url,body){
+  const h={'Content-Type':'application/json'};const t=token();if(t)h['X-API-Token']=t;
+  let r=await fetch(url,{method:'POST',headers:h,body:body?JSON.stringify(body):undefined});
+  if(r.status===401){const t2=prompt('Máy chủ yêu cầu mã truy cập ca trực:');
+    if(t2){try{sessionStorage.setItem('edge_token',t2);}catch(e){} h['X-API-Token']=t2;
+      r=await fetch(url,{method:'POST',headers:h,body:body?JSON.stringify(body):undefined});}}
+  let d={};try{d=await r.json();}catch(e){}
+  if(!r.ok)throw new Error(d.detail&&typeof d.detail==='string'?d.detail:(d.error||('lỗi '+r.status)));
+  return d;}
+function say(t,err){const m=$('actmsg');m.textContent=t;m.className='msg'+(err?' err':'');}
 SC.forEach(([k,t])=>{const b=document.createElement('button');b.className='btn';b.textContent=t;
-  b.onclick=()=>fetch('/api/scenario/'+k,{method:'POST'});b.dataset.k=k;scen.appendChild(b);});
-document.getElementById('bok').onclick=()=>act('xac_nhan');
-document.getElementById('bno').onclick=()=>act('bo_qua');
-function act(a){fetch('/api/act',{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({action:a,operator:'truc-ca-1'})});}
+  b.onclick=()=>post('/api/scenario/'+k).then(()=>say('Đã chuyển kịch bản: '+t))
+    .catch(e=>say('Không chuyển được kịch bản: '+e.message,true));
+  b.dataset.k=k;scen.appendChild(b);});
+$('bok').onclick=()=>act('xac_nhan');
+$('bno').onclick=()=>act('bo_qua');
+async function act(a){
+  $('bok').disabled=$('bno').disabled=true;
+  try{const d=await post('/api/act',{action:a,operator:'truc-ca-1'});
+    say(d.persisted?'Đã ghi quyết định vào nhật ký.':'Đã ghi trên màn hình nhưng KHÔNG ghi được xuống đĩa — báo kỹ thuật.',!d.persisted);}
+  catch(e){say('Không ghi được quyết định: '+e.message,true);}}
 
 const cv=document.getElementById('map'),cx=cv.getContext('2d');
 let SCALE=1;
@@ -165,7 +193,7 @@ function draw(s){
     cx.fillStyle='#F3F4F7';cx.font='600 12px system-ui';
     cx.fillText((KIND[s.kind]||s.kind)+'  '+Math.round(Math.hypot(s.pos[0],s.pos[1]))+' m  '
       +Math.round(s.pos[2])+' m cao',a+11,b-9);}
-  cx.fillStyle='#5B6striped';cx.fillStyle='#8A93A6';cx.font='11px ui-monospace';
+  cx.fillStyle='#8A93A6';cx.font='11px ui-monospace';
   cx.fillText('TRẠM GIÁM SÁT',w/2+7,h/2+15);
   cx.fillStyle='#F3F4F7';cx.fillRect(w/2-3,h/2-3,6,6);
   if(s.blind){cx.fillStyle='rgba(255,176,32,.13)';cx.fillRect(0,0,w,h);
@@ -174,9 +202,18 @@ function draw(s){
 }
 
 function bar(v,cls){return `<div class="bar ${cls||''}"><i style="width:${Math.round(v*100)}%"></i></div>`;}
+function live(ok,text){const l=$('live');l.textContent=text;l.className='pill '+(ok?'live':'down');}
 async function tick(){
-  let s;try{s=await (await fetch('/api/state')).json();}catch(e){return;}
-  if(!s||!s.pos)return;
+  let s;
+  try{const r=await fetch('/api/state',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);s=await r.json();}
+  catch(e){live(false,'● mất kết nối máy chủ');return;}
+  const ban=$('banner');
+  if(s.models_trained===false){ban.style.display='block';
+    ban.textContent='⚠ Máy chủ đang chạy với trọng số CHƯA HUẤN LUYỆN — mọi nhận dạng trên màn hình là vô nghĩa.';}
+  else ban.style.display='none';
+  if(!s.pos){live(true,'● đang khởi động');return;}
+  live(true,'● đang chạy');
   draw(s);
   document.getElementById('scn').textContent=s.scenario_label||'';
   document.getElementById('wx').textContent='Thời tiết: '+(s.weather||'');
@@ -214,15 +251,19 @@ async function tick(){
     `<div class="note">Cột số là p99 — 99% số khung xử lý xong nhanh hơn giá trị này.</div>`;
   const a=s.audit||[];
   document.getElementById('audit').innerHTML=a.length?a.map(x=>
-    `<tr><td>${x.frame}</td><td><span class="tag ${x.action==='xac_nhan'?'ok':'no'}">
+    `<tr><td>${esc(x.frame)}</td><td><span class="tag ${x.action==='xac_nhan'?'ok':'no'}">
       ${x.action==='xac_nhan'?'XÁC NHẬN':'BỎ QUA'}</span></td>
-      <td>${KIND[x.kind]||x.kind}</td><td>${(x.confidence*100).toFixed(0)}%</td></tr>`).join('')
-    :'<tr><td colspan="4" style="color:var(--muted)">chưa có thao tác nào</td></tr>';
-  document.getElementById('bok').disabled=!!s.operator;
-  document.getElementById('bno').disabled=!!s.operator;
+      <td>${esc(x.operator)}</td><td>${esc(KIND[x.kind]||x.kind)}</td><td>${(x.confidence*100).toFixed(0)}%</td></tr>`).join('')
+    :'<tr><td colspan="5" style="color:var(--muted)">chưa có thao tác nào</td></tr>';
+  $('bok').disabled=!!s.operator;
+  $('bno').disabled=!!s.operator;
+  $('ask').style.display=s.needs_operator?'block':'none';
   [...scen.children].forEach(b=>b.classList.toggle('on',b.dataset.k===s.scenario));
 }
-setInterval(tick,180);tick();
+// Hẹn giờ nối tiếp thay cho setInterval: máy chủ chậm thì không dồn hàng
+// chục yêu cầu chồng lên nhau.
+async function loop(){try{await tick();}finally{setTimeout(loop,180);}}
+loop();
 </script>
 </body>
 </html>

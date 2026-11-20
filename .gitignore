@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .env
 TAI-KHOAN.md
+data/cache/
 data/*_test.npz
 data/rf_cache*.npz
 data/audit*.jsonl

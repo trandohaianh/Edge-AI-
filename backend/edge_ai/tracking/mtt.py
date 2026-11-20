@@ -310,16 +310,21 @@ class MultiTracker:
         # tiêu bị bám hai lần: giữ vết già hơn.
         conf = [t for t in self.tracks.values() if t.confirmed]
         seen = set()
-        for i, a in enumerate(conf):
-            for b in conf[i + 1 :]:
-                key = (min(a.tid, b.tid), max(a.tid, b.tid))
-                if np.linalg.norm(a.ekf.pos - b.ekf.pos) < MERGE_DIST:
-                    seen.add(key)
-                    self._close[key] = self._close.get(key, 0) + 1
-                    if self._close[key] >= MERGE_FRAMES:
-                        young = a if a.born > b.born else b
-                        if young.tid in self.tracks:
-                            self._delete(young.tid, "merged")
+        if len(conf) > 1:
+            # khoảng cách mọi cặp trong MỘT phép tính, rồi chỉ duyệt cặp gần
+            P = np.array([t.ekf.x[:3] for t in conf])
+            close = np.linalg.norm(P[:, None] - P[None], axis=2) < MERGE_DIST
+            pairs = [(conf[i], conf[j]) for i, j in zip(*np.nonzero(np.triu(close, 1)))]
+        else:
+            pairs = []
+        for a, b in pairs:
+            key = (min(a.tid, b.tid), max(a.tid, b.tid))
+            seen.add(key)
+            self._close[key] = self._close.get(key, 0) + 1
+            if self._close[key] >= MERGE_FRAMES:
+                young = a if a.born > b.born else b
+                if young.tid in self.tracks:
+                    self._delete(young.tid, "merged")
         self._close = {kk: v for kk, v in self._close.items() if kk in seen}
 
     # ---------------------------------------------------------------- camera

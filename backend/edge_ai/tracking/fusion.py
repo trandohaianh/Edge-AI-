@@ -25,22 +25,29 @@ import numpy as np
 
 from edge_ai.sim.scene import TARGET_KINDS, Weather
 
+
+def _clip(v: float, lo: float, hi: float) -> float:
+    """Kẹp một SỐ VÔ HƯỚNG: nhanh hơn np.clip hàng chục lần khi gọi trên số
+    lẻ, mà hàm này được gọi cho mọi vết bám ở mọi khung."""
+    return lo if v < lo else hi if v > hi else float(v)
+
+
 SENSORS = ["radar", "rf", "eo", "lidar"]
 
 
 def reliability(sensor: str, w: Weather, rng_m: float | None = None) -> float:
     """Độ tin cậy 0..1 của một cảm biến trong điều kiện hiện tại."""
     if sensor == "radar":
-        return float(np.clip(0.9 - 0.15 * w.rain, 0.2, 1.0))
+        return _clip(0.9 - 0.15 * w.rain, 0.2, 1.0)
     if sensor == "rf":
-        return float(np.clip(0.85 - 0.7 * w.jamming, 0.05, 1.0))
+        return _clip(0.85 - 0.7 * w.jamming, 0.05, 1.0)
     if sensor == "eo":
         base = 0.9 * (1 - 0.8 * w.fog) * (0.6 if w.night else 1.0)
         if rng_m is not None:
-            base *= float(np.clip(1.2 - rng_m / 1500.0, 0.1, 1.0))
-        return float(np.clip(base, 0.03, 1.0))
+            base *= _clip(1.2 - rng_m / 1500.0, 0.1, 1.0)
+        return _clip(base, 0.03, 1.0)
     if sensor == "lidar":
-        return float(np.clip(0.95 * (1 - 0.9 * w.fog), 0.02, 1.0))
+        return _clip(0.95 * (1 - 0.9 * w.fog), 0.02, 1.0)
     return 0.5
 
 
@@ -159,14 +166,14 @@ def track_confidence(fused: FusedState, pos_sigma: float, n_sensor: int) -> floa
     hai loại cảm biến đồng ý và quan sát được khoảng hai giây.
     """
     _, p = fused.top()
-    geo = float(np.clip(1.0 - pos_sigma / 120.0, 0.0, 1.0))
+    geo = _clip(1.0 - pos_sigma / 120.0, 0.0, 1.0)
     n_cls = len([k for k, v in fused.by_sensor.items() if float(np.abs(v).sum()) > 0.3])
-    div = float(np.clip(n_cls / 2.0, 0.0, 1.0))
+    div = _clip(n_cls / 2.0, 0.0, 1.0)
     # Độ chín là một HỆ SỐ NHÂN, không phải một số hạng cộng thêm. Cộng thêm
     # thì ba thành phần kia vẫn đủ sức đẩy điểm qua ngưỡng ngay khung đầu —
     # trong đó "độ chính xác vị trí" ở khung đầu thực chất chỉ là hiệp phương
     # sai khởi tạo mình tự đặt ra, chưa phải bằng chứng gì cả. Nhân vào thì
     # hệ thống buộc phải quan sát khoảng 1,5 giây mới dám tự tin.
-    gate = float(np.clip(fused.n_evidence / 15.0, 0.12, 1.0))
+    gate = _clip(fused.n_evidence / 15.0, 0.12, 1.0)
     c = (0.45 * p + 0.25 * geo + 0.30 * div) * gate
-    return float(np.clip(c * (1 - 0.35 * fused.conflict), 0.0, 1.0))
+    return _clip(c * (1 - 0.35 * fused.conflict), 0.0, 1.0)

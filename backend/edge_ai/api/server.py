@@ -40,7 +40,7 @@ from pydantic import BaseModel, Field
 
 from edge_ai.api import audit_log
 from edge_ai.config import FRAME_DT, LOG_DIR, RESULTS_DIR, STATIC_DIR
-from edge_ai.experiments.evaluate_mtt import _fan, build_targets
+from edge_ai.sim.scenarios import build_targets, fan_targets
 from edge_ai.sim.scene import Weather, make_scenario, sense
 from edge_ai.sim.sensors import EOTurret, RawProvider, attach_raw, sense_all
 from edge_ai.tracking.mtt import MultiTracker
@@ -117,7 +117,7 @@ SCENARIOS = {
     # radar trả về số đo trộn lẫn cùng báo động giả (mtt.py).
     "swarm": dict(
         label="Nhiều mục tiêu · 3 drone + 1 chim + báo động giả",
-        targets=_fan(["multirotor", "fixed_wing", "multirotor", "bird"], spread=60.0),
+        targets=fan_targets(["multirotor", "fixed_wing", "multirotor", "bird"], spread=60.0),
         w=Weather(),
         clutter=1.5,
     ),

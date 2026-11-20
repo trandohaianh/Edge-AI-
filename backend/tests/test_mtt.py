@@ -88,7 +88,7 @@ def _run(models, spec, n, seed, clutter=1.0, w=None):
 
 
 def test_bam_dung_so_muc_tieu_trong_bao_dong_gia(models):
-    spec = EM._fan(["multirotor", "fixed_wing", "bird"])
+    spec = EM.fan_targets(["multirotor", "fixed_wing", "bird"])
     mt, hist, _ = _run(models, spec, 90, seed=11, clutter=2.0)
     for msgs, truth in hist[30:]:
         assert len(msgs) == 3
@@ -127,7 +127,7 @@ def test_hai_drone_sat_nhau_giu_dung_hai_vet_khong_doi_id(models):
 
 def test_chi_vet_da_xac_nhan_moi_lay_du_lieu_tho(models):
     """Báo động giả (vết tạm) không được tiêu tốn mạng nặng."""
-    spec = EM._fan(["multirotor"])
+    spec = EM.fan_targets(["multirotor"])
     mt, hist, prov = _run(models, spec, 60, seed=14, clutter=3.0)
     # 1 mục tiêu: radar mỗi 3 khung, RF mỗi 5 khung, trừ vài khung đầu chưa xác nhận
     assert prov.calls["spec"] <= 60 // 3 + 1
@@ -170,7 +170,7 @@ def test_tran_mang_nang_moi_khung_voi_10_muc_tieu(models):
     """10 mục tiêu: mỗi khung không quá trần, nhưng vết nào cũng vẫn được phân loại."""
     from edge_ai.tracking import mtt as MT
 
-    spec = EM._fan(["multirotor"] * 10, spread=90.0)
+    spec = EM.fan_targets(["multirotor"] * 10, spread=90.0)
     rng = np.random.default_rng(15)
     w = Weather()
     tgs = EM.build_targets(spec, 80, rng)
@@ -191,3 +191,24 @@ def test_tran_mang_nang_moi_khung_voi_10_muc_tieu(models):
     conf = [t for t in mt.tracks.values() if t.confirmed]
     assert len(conf) == 10
     assert all(t.last_md >= 0 for t in conf)  # vết nào cũng đã được phân loại
+
+
+def test_bo_bam_tat_dinh_nen_phat_lai_do_duoc_do_tre(models):
+    """Phép đo độ trễ bằng phát lại + lấy min (evaluate_mtt.replay_latency) chỉ
+    đúng khi mọi lần phát lại làm CÙNG một khối lượng việc."""
+    import copy
+
+    rng = np.random.default_rng(16)
+    w = Weather()
+    tgs = EM.build_targets(EM.fan_targets(["multirotor", "bird"]), 40, rng)
+    frames = [sense_all(tgs, k, w, rng, clutter_rate=1.0, raw=False) for k in range(40)]
+    outs = []
+    for _ in range(2):
+        mt = MultiTracker(models)
+        outs.append(
+            [
+                [(m["tid"], m["pos"]) for m in mt.step(copy.deepcopy(d), w, k)]
+                for k, d in enumerate(frames)
+            ]
+        )
+    assert outs[0] == outs[1]

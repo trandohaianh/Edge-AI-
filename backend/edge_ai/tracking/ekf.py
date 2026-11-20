@@ -13,11 +13,16 @@ thực tế là cảm biến rơi rụng không đồng bộ.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 
 def _wrap(a: float) -> float:
-    return (a + np.pi) % (2 * np.pi) - np.pi
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
+_H_LIDAR = np.hstack([np.eye(3), np.zeros((3, 3))])
 
 
 class EKF:
@@ -50,19 +55,21 @@ class EKF:
     # ----------------------------------------------------- hàm đo & Jacobian
     @staticmethod
     def h(sensor: str, x: np.ndarray) -> np.ndarray:
-        p, v = x[:3], x[3:]
-        r = np.linalg.norm(p)
-        r = max(r, 1e-6)
-        az = np.arctan2(p[1], p[0])
-        el = np.arcsin(np.clip(p[2] / r, -1, 1))
-        if sensor == "radar":
-            return np.array([r, az, el, float(np.dot(v, p) / r)])
-        if sensor == "eo":
-            return np.array([az, el])
+        # Phép toán trên số vô hướng viết bằng ``math`` chứ không bằng numpy:
+        # mỗi lời gọi numpy trên một số tốn cỡ micro giây chỉ cho chi phí gọi,
+        # và khi bám 10 mục tiêu h()/H() bị gọi hàng chục nghìn lần mỗi giây.
+        px, py, pz, vx, vy, vz = x.tolist()
+        if sensor == "lidar":
+            return np.array([px, py, pz])
+        r = max(math.sqrt(px * px + py * py + pz * pz), 1e-6)
+        az = math.atan2(py, px)
         if sensor == "rf":
             return np.array([az])
-        if sensor == "lidar":
-            return p.copy()
+        el = math.asin(min(1.0, max(-1.0, pz / r)))
+        if sensor == "eo":
+            return np.array([az, el])
+        if sensor == "radar":
+            return np.array([r, az, el, (vx * px + vy * py + vz * pz) / r])
         raise ValueError(sensor)
 
     @staticmethod
@@ -75,31 +82,24 @@ class EKF:
         Nỗi lo "viết sai đạo hàm" được giữ lại dưới dạng một bài test so
         từng phần tử với ``H_numeric`` ở nhiều trạng thái ngẫu nhiên.
         """
-        p, v = x[:3], x[3:]
-        px, py, pz = p
-        r2 = max(float(p @ p), 1e-12)
-        r = np.sqrt(r2)
-        rho2 = max(px * px + py * py, 1e-12)
-        rho = np.sqrt(rho2)
-        d_az = np.array([-py / rho2, px / rho2, 0.0])
-        d_el = np.array([-px * pz / (r2 * rho), -py * pz / (r2 * rho), rho / r2])
         if sensor == "lidar":
-            return np.hstack([np.eye(3), np.zeros((3, 3))])
+            return _H_LIDAR.copy()
+        px, py, pz, vx, vy, vz = x.tolist()
+        rho2 = max(px * px + py * py, 1e-12)
+        d_az = [-py / rho2, px / rho2, 0.0, 0.0, 0.0, 0.0]
         if sensor == "rf":
-            J = np.zeros((1, 6))
-            J[0, :3] = d_az
-            return J
+            return np.array([d_az])
+        r2 = max(px * px + py * py + pz * pz, 1e-12)
+        r = math.sqrt(r2)
+        rho = math.sqrt(rho2)
+        d_el = [-px * pz / (r2 * rho), -py * pz / (r2 * rho), rho / r2, 0.0, 0.0, 0.0]
         if sensor == "eo":
-            J = np.zeros((2, 6))
-            J[0, :3], J[1, :3] = d_az, d_el
-            return J
+            return np.array([d_az, d_el])
         if sensor == "radar":
-            J = np.zeros((4, 6))
-            J[0, :3] = p / r
-            J[1, :3], J[2, :3] = d_az, d_el
-            J[3, :3] = v / r - float(v @ p) * p / (r2 * r)
-            J[3, 3:] = p / r
-            return J
+            vp = (vx * px + vy * py + vz * pz) / (r2 * r)
+            d_r = [px / r, py / r, pz / r, 0.0, 0.0, 0.0]
+            d_rr = [vx / r - vp * px, vy / r - vp * py, vz / r - vp * pz, px / r, py / r, pz / r]
+            return np.array([d_r, d_az, d_el, d_rr])
         raise ValueError(sensor)
 
     @staticmethod
@@ -192,7 +192,8 @@ class EKF:
         return self.x[3:].copy()
 
     def pos_sigma(self) -> float:
-        return float(np.sqrt(np.trace(self.P[:3, :3]) / 3))
+        P = self.P
+        return math.sqrt((P[0, 0] + P[1, 1] + P[2, 2]) / 3)
 
 
 def predict_many(filters: list[EKF], dt: float) -> None:

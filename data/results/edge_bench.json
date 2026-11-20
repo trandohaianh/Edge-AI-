@@ -13,10 +13,10 @@
    "file_kb": 262.6,
    "fp32_weights_kb": 244.0,
    "latency": {
-    "mean_ms": 8.637,
-    "p50_ms": 7.225,
-    "p99_ms": 23.283,
-    "max_ms": 26.507,
+    "mean_ms": 12.648,
+    "p50_ms": 12.256,
+    "p99_ms": 19.006,
+    "max_ms": 37.209,
     "n": 300
    }
   },
@@ -25,10 +25,10 @@
    "file_kb": 261.9,
    "fp32_weights_kb": 244.0,
    "latency": {
-    "mean_ms": 6.139,
-    "p50_ms": 6.194,
-    "p99_ms": 11.613,
-    "max_ms": 14.361,
+    "mean_ms": 10.568,
+    "p50_ms": 10.547,
+    "p99_ms": 14.384,
+    "max_ms": 15.245,
     "n": 300
    }
   },
@@ -37,33 +37,40 @@
    "file_kb": 177.2,
    "fp32_weights_kb": 167.2,
    "latency": {
-    "mean_ms": 1.137,
-    "p50_ms": 1.06,
-    "p99_ms": 2.749,
-    "max_ms": 5.513,
+    "mean_ms": 1.948,
+    "p50_ms": 1.87,
+    "p99_ms": 4.109,
+    "max_ms": 4.939,
     "n": 300
    }
   }
  },
  "worst_frame_rf_plus_md": {
-  "mean_ms": 9.877,
-  "p50_ms": 8.908,
-  "p99_ms": 17.303,
-  "max_ms": 24.804,
+  "mean_ms": 56.727,
+  "p50_ms": 25.67,
+  "p99_ms": 425.749,
+  "max_ms": 1157.802,
+  "n": 300
+ },
+ "mtt_capped_frame_nets": {
+  "mean_ms": 131.31,
+  "p50_ms": 42.693,
+  "p99_ms": 1180.002,
+  "max_ms": 1864.791,
   "n": 300
  },
  "blackout_full_rollout_9s": {
-  "mean_ms": 9.938,
-  "p50_ms": 8.877,
-  "p99_ms": 14.453,
-  "max_ms": 14.806,
+  "mean_ms": 42.378,
+  "p50_ms": 36.957,
+  "p99_ms": 116.673,
+  "max_ms": 138.745,
   "n": 30
  },
  "blackout_one_extension_1s": {
-  "mean_ms": 1.21,
-  "p50_ms": 1.052,
-  "p99_ms": 2.293,
-  "max_ms": 2.881,
+  "mean_ms": 5.585,
+  "p50_ms": 3.73,
+  "p99_ms": 27.26,
+  "max_ms": 40.641,
   "n": 300
  },
  "schedule": {

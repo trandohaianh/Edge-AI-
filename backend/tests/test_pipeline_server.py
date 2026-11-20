@@ -427,3 +427,28 @@ def test_figures_ve_duoc_tu_ket_qua_json(tmp_path, monkeypatch):
         for fn in (FG.fig_accuracy, FG.fig_latency, FG.fig_scenarios, FG.fig_adversarial):
             fn()
     assert len(list(tmp_path.glob("*.png"))) == 8
+
+
+def test_quy_tac_phu_thuoc_giua_cac_goi():
+    """docs/CONVENTIONS.md mục 1: mã chạy trên trạm (api, tracking, sim, ml)
+    không được import mã đánh giá/huấn luyện; sim không được biết tracking."""
+    import ast
+
+    pkg = ROOT / "backend" / "edge_ai"
+    forbidden = {
+        "api": ("edge_ai.experiments", "edge_ai.training"),
+        "tracking": ("edge_ai.experiments", "edge_ai.training", "edge_ai.api"),
+        "sim": ("edge_ai.experiments", "edge_ai.training", "edge_ai.api", "edge_ai.tracking"),
+        "ml": ("edge_ai.experiments", "edge_ai.training", "edge_ai.api", "edge_ai.tracking"),
+    }
+    bad = []
+    for sub, banned in forbidden.items():
+        for f in (pkg / sub).rglob("*.py"):
+            for node in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+                mods = []
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    mods = [node.module]
+                elif isinstance(node, ast.Import):
+                    mods = [a.name for a in node.names]
+                bad += [f"{f.name}: {m}" for m in mods if m.startswith(banned)]
+    assert not bad, bad

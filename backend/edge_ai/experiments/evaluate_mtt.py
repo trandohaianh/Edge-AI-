@@ -24,28 +24,13 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR, SEED  # noqa: F401
-from edge_ai.sim.scene import Target, Weather, make_trajectory, rotate_into_view
+from edge_ai.sim.scenarios import build_targets, fan_targets
+from edge_ai.sim.scene import Weather
 from edge_ai.sim.sensors import RawProvider, sense_all
 from edge_ai.tracking.mtt import MultiTracker
 from edge_ai.tracking.pipeline import load_models
 
 OSPA_C, MATCH_M, WARMUP = 100.0, 50.0, 30
-
-
-def build_targets(spec: list[dict], n: int, rng: np.random.Generator) -> list[Target]:
-    out = []
-    for i, s in enumerate(spec):
-        p, v = make_trajectory(s["kind"], n, rng, s.get("pattern", "approach"), r0=s["r0"])
-        tg = Target(
-            kind=s["kind"],
-            pos=p,
-            vel=v,
-            emits_rf=s["kind"] != "bird",
-            patch=s.get("patch", False),
-            tid=i,
-        )
-        out.append(rotate_into_view(tg, np.deg2rad(s["az"])))
-    return out
 
 
 def ospa(X: np.ndarray, Y: np.ndarray, c: float = OSPA_C) -> float:
@@ -110,19 +95,10 @@ def run(models, spec, w: Weather, n: int, seed: int, clutter: float):
     }
 
 
-def _fan(kinds, r0=900.0, spread=50.0, pattern="approach"):
-    """Nhiều mục tiêu toả đều trong một góc ``spread`` độ quanh hướng 0."""
-    az = np.linspace(-spread / 2, spread / 2, len(kinds)) if len(kinds) > 1 else [0.0]
-    return [
-        dict(kind=k, r0=r0 + 60 * i, az=float(a), pattern=pattern)
-        for i, (k, a) in enumerate(zip(kinds, az))
-    ]
-
-
 SCENARIOS = [
     (
         "M1 · 3 drone + 1 chim, báo động giả 1/khung",
-        _fan(["multirotor", "fixed_wing", "multirotor", "bird"]),
+        fan_targets(["multirotor", "fixed_wing", "multirotor", "bird"]),
         Weather(),
         1.0,
     ),
@@ -134,13 +110,13 @@ SCENARIOS = [
     ),
     (
         "M3 · bầy 6 drone trong mưa, báo động giả 3/khung",
-        _fan(["multirotor"] * 4 + ["fixed_wing"] * 2, spread=70.0),
+        fan_targets(["multirotor"] * 4 + ["fixed_wing"] * 2, spread=70.0),
         Weather(rain=0.6),
         3.0,
     ),
     (
         "M4 · 2 drone + 2 chim, sương mù đêm",
-        _fan(["multirotor", "bird", "multirotor", "bird"], r0=700),
+        fan_targets(["multirotor", "bird", "multirotor", "bird"], r0=700),
         Weather(fog=0.8, night=True),
         1.0,
     ),
@@ -158,34 +134,88 @@ KEYS = [
 ]
 
 
-def scaling(models, n_frames=120, counts=(1, 3, 6, 10), repeats=3):
-    """Thời gian xử lý một khung theo số mục tiêu (báo động giả 1/khung).
+class _CachedRaw(RawProvider):
+    """Dữ liệu thô sinh MỘT lần rồi dùng lại, để mọi lần phát lại nhận đúng
+    cùng ảnh phổ / đoạn I/Q và bộ bám làm đúng cùng một khối lượng việc."""
 
-    Mỗi mức chạy ``repeats`` lần và lấy TRUNG VỊ của từng thống kê: trên máy
-    dùng chung, một lần chạy có thể trùng lúc tiến trình khác chiếm CPU và
-    đẩy p99 lên gấp đôi; trung vị của nhiều lần bớt phụ thuộc vào may rủi đó.
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.k = 0
+        self.cache: dict = {}
+
+    def __call__(self, d, what):
+        key = (self.k, d.meta.get("truth_id", -1), what, float(d.z[0]))
+        if key not in self.cache:
+            self.cache[key] = super().__call__(d, what)
+        return self.cache[key]
+
+
+def replay_latency(
+    models,
+    n_targets: int,
+    n_frames: int = 120,
+    repeats: int = 5,
+    clutter: float = 1.0,
+    seed: int | None = None,
+) -> dict:
+    """Thời gian xử lý mỗi khung, đo bằng PHÁT LẠI và lấy MIN theo từng khung.
+
+    Lần chạy đầu ghi lại số đo của từng khung (và sinh dữ liệu thô). Sau đó
+    phát lại đúng chuỗi đó qua ``repeats`` bộ bám mới. Bộ bám là tất định nên
+    mọi lần phát lại làm cùng một khối lượng việc; chênh lệch thời gian giữa
+    các lần CHỈ do tiến trình khác chen vào CPU. Lấy min theo từng khung là
+    cách chuẩn để ước lượng chi phí thật (``timeit`` cũng lấy min).
+
+    Trả về cả thống kê của chuỗi min lẫn trung vị p99 của các lần chạy thô,
+    để người đọc thấy mức nhiễu của máy đo.
     """
+    import copy
+
+    seed = SEED + 900 + n_targets if seed is None else seed
+    rng = np.random.default_rng(seed)
+    w = Weather()
+    tgs = build_targets(fan_targets(["multirotor"] * n_targets, spread=90.0), n_frames, rng)
+    raw = _CachedRaw(tgs, w, rng)
+    mt = MultiTracker(models, raw_provider=raw)
+    frames = []
+    for k in range(n_frames):
+        dets = sense_all(tgs, k, w, rng, eo_az=mt.turret.az, clutter_rate=clutter, raw=False)
+        frames.append(copy.deepcopy(dets))
+        raw.k = k
+        mt.step(dets, w, k)
+        mt.point_camera(k)
+    runs = []
+    for _ in range(repeats):
+        m2 = MultiTracker(models, raw_provider=raw)
+        for k, dets in enumerate(frames):
+            raw.k = k
+            m2.step(copy.deepcopy(dets), w, k)
+            m2.point_camera(k)
+        runs.append(np.asarray(m2.timing["total"])[3:])
+    R = np.stack(runs)
+    best = R.min(axis=0)
+    return {
+        "targets": n_targets,
+        "repeats": repeats,
+        "min_mean_ms": round(float(best.mean()), 3),
+        "min_p99_ms": round(float(np.percentile(best, 99)), 3),
+        "min_max_ms": round(float(best.max()), 3),
+        "raw_p99_median_ms": round(float(np.median(np.percentile(R, 99, axis=1))), 3),
+        "frames_over_budget_min": int((best > 50.0).sum()),
+        "frames": int(best.size),
+    }
+
+
+def scaling(models, n_frames=120, counts=(1, 3, 6, 10), repeats=5):
+    """Thời gian xử lý một khung theo số mục tiêu (báo động giả 1/khung)."""
     out = []
-    keys = ("lat_mean_ms", "lat_p99_ms", "lat_max_ms")
     for c in counts:
-        rs = [
-            run(
-                models,
-                _fan(["multirotor"] * c, spread=90.0),
-                Weather(),
-                n_frames,
-                SEED + 900 + c,
-                1.0,
-            )
-            for _ in range(repeats)
-        ]
-        row = {"targets": c, "repeats": repeats}
-        row |= {k: round(float(np.median([r[k] for r in rs])), 3) for k in keys}
+        row = replay_latency(models, c, n_frames, repeats)
         out.append(row)
         print(
-            f"  {c:2d} mục tiêu: trung bình {row['lat_mean_ms']:.2f} ms, "
-            f"p99 {row['lat_p99_ms']:.2f} ms, max {row['lat_max_ms']:.2f} ms "
-            f"(trung vị {repeats} lần)",
+            f"  {c:2d} mục tiêu: min-theo-khung TB {row['min_mean_ms']:.2f} ms, "
+            f"p99 {row['min_p99_ms']:.2f} ms, max {row['min_max_ms']:.2f} ms | "
+            f"p99 thô (trung vị {repeats} lần) {row['raw_p99_median_ms']:.2f} ms",
             flush=True,
         )
     return out

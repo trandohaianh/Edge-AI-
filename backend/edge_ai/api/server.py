@@ -17,6 +17,7 @@ Cấu hình qua biến môi trường (không có giá trị bí mật nào nằ
   EDGE_AUDIT_LOG        tệp nhật ký quyết định (mặc định logs/audit.jsonl)
   EDGE_ALLOW_UNTRAINED  =1 cho phép chạy khi thiếu trọng số (chỉ để thử luồng)
 """
+
 from __future__ import annotations
 
 import hmac
@@ -37,16 +38,16 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from edge_ai.config import FRAME_DT, LOG_DIR, RESULTS_DIR, STATIC_DIR
 from edge_ai.api import audit_log
-from edge_ai.tracking.pipeline import Pipeline, load_models, warmup
+from edge_ai.config import FRAME_DT, LOG_DIR, RESULTS_DIR, STATIC_DIR
 from edge_ai.experiments.evaluate_mtt import _fan, build_targets
-from edge_ai.tracking.mtt import MultiTracker
 from edge_ai.sim.scene import Weather, make_scenario, sense
 from edge_ai.sim.sensors import EOTurret, RawProvider, attach_raw, sense_all
+from edge_ai.tracking.mtt import MultiTracker
+from edge_ai.tracking.pipeline import Pipeline, load_models, warmup
 
 log = logging.getLogger("edge.server")
-AUDIT_MEM = 1000          # số bản ghi giữ trong RAM; bản đầy đủ nằm trên đĩa
+AUDIT_MEM = 1000  # số bản ghi giữ trong RAM; bản đầy đủ nằm trên đĩa
 
 
 def _audit_path() -> Path:
@@ -58,29 +59,68 @@ def _audit_path() -> Path:
 # nếu để mục tiêu sinh ngẫu nhiên ở 2,6 km thì camera không bao giờ vào cuộc
 # và kịch bản "đánh lừa camera" chẳng chứng minh được gì.
 SCENARIOS = {
-    "clear": dict(label="Trời quang · drone đa cánh quạt",
-                  kind="multirotor", w=Weather(), patch=False, drop=None,
-                  pattern="approach", start_m=900),
-    "fog_night": dict(label="Đêm + sương mù dày",
-                      kind="multirotor", w=Weather(fog=0.85, night=True),
-                      patch=False, drop=None, pattern="approach", start_m=900),
-    "jamming": dict(label="Bị nhiễu dải RF",
-                    kind="multirotor", w=Weather(jamming=0.9), patch=False, drop=None,
-                    pattern="approach", start_m=900),
-    "bird": dict(label="Chim — phải loại, không báo động",
-                 kind="bird", w=Weather(), patch=False, drop=None,
-                 pattern="approach", start_m=800),
-    "patch": dict(label="Dán nhãn ngụy trang đánh lừa camera",
-                  kind="multirotor", w=Weather(), patch=True, drop=None,
-                  pattern="approach", start_m=900),
-    "dropout": dict(label="Mất dấu 4 giây giữa chừng",
-                    kind="multirotor", w=Weather(), patch=False, drop=(110, 150),
-                    pattern="approach", start_m=1000),
+    "clear": dict(
+        label="Trời quang · drone đa cánh quạt",
+        kind="multirotor",
+        w=Weather(),
+        patch=False,
+        drop=None,
+        pattern="approach",
+        start_m=900,
+    ),
+    "fog_night": dict(
+        label="Đêm + sương mù dày",
+        kind="multirotor",
+        w=Weather(fog=0.85, night=True),
+        patch=False,
+        drop=None,
+        pattern="approach",
+        start_m=900,
+    ),
+    "jamming": dict(
+        label="Bị nhiễu dải RF",
+        kind="multirotor",
+        w=Weather(jamming=0.9),
+        patch=False,
+        drop=None,
+        pattern="approach",
+        start_m=900,
+    ),
+    "bird": dict(
+        label="Chim — phải loại, không báo động",
+        kind="bird",
+        w=Weather(),
+        patch=False,
+        drop=None,
+        pattern="approach",
+        start_m=800,
+    ),
+    "patch": dict(
+        label="Dán nhãn ngụy trang đánh lừa camera",
+        kind="multirotor",
+        w=Weather(),
+        patch=True,
+        drop=None,
+        pattern="approach",
+        start_m=900,
+    ),
+    "dropout": dict(
+        label="Mất dấu 4 giây giữa chừng",
+        kind="multirotor",
+        w=Weather(),
+        patch=False,
+        drop=(110, 150),
+        pattern="approach",
+        start_m=1000,
+    ),
     # Nhiều mục tiêu: bộ bám không được biết trước có bao nhiêu mục tiêu,
     # radar trả về số đo trộn lẫn cùng báo động giả (mtt.py).
-    "swarm": dict(label="Nhiều mục tiêu · 3 drone + 1 chim + báo động giả",
-                  targets=_fan(["multirotor", "fixed_wing", "multirotor", "bird"], spread=60.0),
-                  w=Weather(), clutter=1.5),
+    "swarm": dict(
+        label="Nhiều mục tiêu · 3 drone + 1 chim + báo động giả",
+        targets=_fan(["multirotor", "fixed_wing", "multirotor", "bird"], spread=60.0),
+        w=Weather(),
+        clutter=1.5,
+    ),
 }
 
 
@@ -100,8 +140,7 @@ class AuditEntry:
 class Engine:
     """Chạy một kịch bản theo thời gian thực, 10 khung/giây."""
 
-    def __init__(self, models=None, audit_path: Path | None = None,
-                 start: bool = True):
+    def __init__(self, models=None, audit_path: Path | None = None, start: bool = True):
         allow = os.environ.get("EDGE_ALLOW_UNTRAINED") == "1"
         self.models = models or load_models(allow_untrained=allow)
         self.trained = all(getattr(m, "trained", True) for m in self.models)
@@ -118,8 +157,7 @@ class Engine:
         self.reset("clear")
         self._thread = None
         if start:
-            self._thread = threading.Thread(target=self._loop, daemon=True,
-                                            name="edge-engine")
+            self._thread = threading.Thread(target=self._loop, daemon=True, name="edge-engine")
             self._thread.start()
 
     def stop(self):
@@ -146,14 +184,20 @@ class Engine:
             self.mt.turret = EOTurret(0.0)
             self.pipe = self.mt.pipe
             return
-        self.tg = make_scenario(self.n, rng, self.w, kinds=[cfg["kind"]],
-                                patch_ids={0} if cfg["patch"] else set(),
-                                patterns=[cfg.get("pattern")] if cfg.get("pattern") else None,
-                                r0=cfg.get("start_m"))[0]
+        self.tg = make_scenario(
+            self.n,
+            rng,
+            self.w,
+            kinds=[cfg["kind"]],
+            patch_ids={0} if cfg["patch"] else set(),
+            patterns=[cfg.get("pattern")] if cfg.get("pattern") else None,
+            r0=cfg.get("start_m"),
+        )[0]
         self.tgs = [self.tg]
         self.pipe = Pipeline(self.models)
-        tr = self.pipe.ensure_track(0, self.tg.pos[0] + rng.normal(0, 25, 3),
-                                    self.tg.vel[0] + rng.normal(0, 6, 3))
+        tr = self.pipe.ensure_track(
+            0, self.tg.pos[0] + rng.normal(0, 25, 3), self.tg.vel[0] + rng.normal(0, 6, 3)
+        )
         # Camera trên bệ quay, được radar dẫn tới phương vị của vết bám.
         self.turret = EOTurret(float(np.arctan2(tr.ekf.pos[1], tr.ekf.pos[0])))
 
@@ -167,7 +211,7 @@ class Engine:
             try:
                 with self.lock:
                     self._step()
-            except Exception:                       # một khung hỏng không
+            except Exception:  # một khung hỏng không
                 log.exception("lỗi khi xử lý khung")  # được làm chết cả vòng lặp
             self._stop.wait(max(0.0, FRAME_DT - (time.perf_counter() - t0)))
 
@@ -179,8 +223,15 @@ class Engine:
         drop = self.cfg.get("drop")
         blind = drop is not None and drop[0] <= k < drop[1]
         if self.multi:
-            dets = sense_all(self.tgs, k, self.w, self.rng, eo_az=self.mt.turret.az,
-                             clutter_rate=self.cfg.get("clutter", 0.0), raw=False)
+            dets = sense_all(
+                self.tgs,
+                k,
+                self.w,
+                self.rng,
+                eo_az=self.mt.turret.az,
+                clutter_rate=self.cfg.get("clutter", 0.0),
+                raw=False,
+            )
             msgs = self.mt.step(dets, self.w, k)
             eo_az = self.mt.point_camera(k)
             self.n_raw_dets = len(dets)
@@ -202,15 +253,22 @@ class Engine:
                 del self.trails[tid]
         # Vết hiển thị chính: vết đang chờ người quyết định trước, rồi tới vết
         # tin cậy cao nhất mà không phải chim.
-        order = sorted(msgs, key=lambda m: (not m["needs_operator"], m["kind"] == "bird",
-                                            -m["confidence"]))
+        order = sorted(
+            msgs, key=lambda m: (not m["needs_operator"], m["kind"] == "bird", -m["confidence"])
+        )
         main = dict(order[0]) if order else {"tid": None, "k": k}
-        main.update({
-            "eo_az": eo_az, "weather": self.w.label(), "blind": blind,
-            "scenario": self.name, "scenario_label": self.cfg["label"],
-            "multi": self.multi, "n_targets_truth": len(self.tgs),
-            "tracks": [self._compact(m) for m in order],
-        })
+        main.update(
+            {
+                "eo_az": eo_az,
+                "weather": self.w.label(),
+                "blind": blind,
+                "scenario": self.name,
+                "scenario_label": self.cfg["label"],
+                "multi": self.multi,
+                "n_targets_truth": len(self.tgs),
+                "tracks": [self._compact(m) for m in order],
+            }
+        )
         if not self.multi:
             main["truth"] = self.tg.pos[k].tolist()
             main["truth_kind"] = self.tg.kind
@@ -223,9 +281,24 @@ class Engine:
 
     @staticmethod
     def _compact(m: dict) -> dict:
-        keys = ("tid", "pos", "vel", "sigma", "kind", "kind_p", "probs", "confidence",
-                "status", "sensors", "evidence", "conflict", "needs_operator",
-                "deception_suspected", "operator", "predicted")
+        keys = (
+            "tid",
+            "pos",
+            "vel",
+            "sigma",
+            "kind",
+            "kind_p",
+            "probs",
+            "confidence",
+            "status",
+            "sensors",
+            "evidence",
+            "conflict",
+            "needs_operator",
+            "deception_suspected",
+            "operator",
+            "predicted",
+        )
         return {k: m.get(k) for k in keys}
 
     def state(self):
@@ -239,9 +312,12 @@ class Engine:
             lat = self.pipe.latency_report()
             if self.multi and len(self.mt.timing["total"]):
                 a = np.asarray(self.mt.timing["total"])
-                lat["total"] = {"mean_ms": round(float(a.mean()), 3),
-                                "p99_ms": round(float(np.percentile(a, 99)), 3),
-                                "max_ms": round(float(a.max()), 3), "n": len(a)}
+                lat["total"] = {
+                    "mean_ms": round(float(a.mean()), 3),
+                    "p99_ms": round(float(np.percentile(a, 99)), 3),
+                    "max_ms": round(float(a.max()), 3),
+                    "n": len(a),
+                }
             m["latency"] = lat.get("total", {})
             m["stage_latency"] = lat
             m["audit"] = [asdict(a) for a in list(self.audit)[-12:]][::-1]
@@ -264,10 +340,16 @@ class Engine:
                 # ghi hai quyết định trái nhau cho cùng một vết bám.
                 raise HTTPException(409, "vết bám này đã có quyết định")
             entry = AuditEntry(
-                ts=time.time(), frame=int(m.get("k", self.k)), action=action,
-                operator=operator, kind=m.get("kind", "?"),
+                ts=time.time(),
+                frame=int(m.get("k", self.k)),
+                action=action,
+                operator=operator,
+                kind=m.get("kind", "?"),
                 confidence=float(m.get("confidence", 0)),
-                evidence=m.get("evidence", {}), pos=m.get("pos", []), tid=int(tid))
+                evidence=m.get("evidence", {}),
+                pos=m.get("pos", []),
+                tid=int(tid),
+            )
             tr.operator = action
             self.audit.append(entry)
             return len(self.audit), self._persist(entry)
@@ -319,7 +401,8 @@ async def security_headers(request: Request, call_next):
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-        "connect-src 'self'; frame-ancestors 'none'")
+        "connect-src 'self'; frame-ancestors 'none'",
+    )
     if request.url.path.startswith("/api/"):
         resp.headers.setdefault("Cache-Control", "no-store")
     return resp
@@ -346,8 +429,7 @@ def require_token(request: Request, x_api_token: str | None = Header(default=Non
     if not want:
         host = request.client.host if request.client else ""
         if host not in LOOPBACK:
-            raise HTTPException(403, "điều khiển từ máy khác cần đặt EDGE_API_TOKEN "
-                                     "trên máy chủ")
+            raise HTTPException(403, "điều khiển từ máy khác cần đặt EDGE_API_TOKEN trên máy chủ")
         return
     if not x_api_token or not hmac.compare_digest(x_api_token.encode(), want.encode()):
         raise HTTPException(401, "thiếu hoặc sai mã truy cập (X-API-Token)")
@@ -366,12 +448,16 @@ def health():
         return JSONResponse({"ok": False, "reason": "đang khởi động"}, status_code=503)
     age = time.time() - e.last_step if e.last_step else None
     alive = age is not None and age < 2.0
-    body = {"ok": alive and e.trained, "loop_alive": alive,
-            "seconds_since_last_frame": None if age is None else round(age, 3),
-            "models_trained": e.trained, "scenario": e.name,
-            "auth_required": bool(os.environ.get("EDGE_API_TOKEN")),
-            "audit_chain_head": e._last_hash[:16],
-            "uptime_s": round(time.time() - e.started_at, 1)}
+    body = {
+        "ok": alive and e.trained,
+        "loop_alive": alive,
+        "seconds_since_last_frame": None if age is None else round(age, 3),
+        "models_trained": e.trained,
+        "scenario": e.name,
+        "auth_required": bool(os.environ.get("EDGE_API_TOKEN")),
+        "audit_chain_head": e._last_hash[:16],
+        "uptime_s": round(time.time() - e.started_at, 1),
+    }
     return JSONResponse(body, status_code=200 if alive else 503)
 
 
@@ -385,8 +471,7 @@ class Act(BaseModel):
     tid: int | None = Field(default=None, ge=0, le=10_000_000)
     # Tên ca trực ghi vào nhật ký: giới hạn độ dài và ký tự để không ai nhét
     # được ký tự xuống dòng hay chuỗi dài vô hạn vào tệp nhật ký.
-    operator: str = Field(default="truc-ca-1", min_length=1, max_length=32,
-                          pattern=r"^[\w.\-]+$")
+    operator: str = Field(default="truc-ca-1", min_length=1, max_length=32, pattern=r"^[\w.\-]+$")
 
 
 @app.post("/api/act", dependencies=[Depends(require_token)])
@@ -409,8 +494,13 @@ def metrics():
     # Phải ghi rõ encoding: các tệp JSON có tiếng Việt, còn open() mặc định
     # trên Windows là cp1252 — bản cũ trả lỗi 500 ở đây khi chạy trên Windows.
     out = {}
-    for f in ("rf_metrics.json", "md_metrics.json", "traj_metrics.json",
-              "scenario_results.json", "adversarial.json"):
+    for f in (
+        "rf_metrics.json",
+        "md_metrics.json",
+        "traj_metrics.json",
+        "scenario_results.json",
+        "adversarial.json",
+    ):
         p = RESULTS_DIR / f
         if p.exists():
             d = json.loads(p.read_text(encoding="utf-8"))

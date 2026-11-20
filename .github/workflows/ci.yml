@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "ruff==0.17.6"
+      - run: ruff check .
+      - run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      # torch bản CPU: nhẹ hơn nhiều so với bản CUDA mặc định
+      - run: pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - run: pip install -e ".[dev,figures]"
+      - run: python -m pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f deploy/Dockerfile -t edge-ai:ci .
+      - name: smoke test container
+        run: |
+          docker run -d --name edge -p 8099:8099 -e EDGE_API_TOKEN=ci-only edge-ai:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8099/api/health && exit 0
+            sleep 2
+          done
+          docker logs edge
+          exit 1

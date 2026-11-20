@@ -16,6 +16,7 @@ là hai cảm biến mà thủ đoạn dán nhãn không chạm tới được.
 Hệ thống chỉ dừng ở mức đưa ra kết luận kèm điểm tin cậy và bằng chứng cho
 người trực ca quyết định. Không có bất kỳ cơ chế tự động hành động nào.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -43,7 +44,7 @@ def reliability(sensor: str, w: Weather, rng_m: float | None = None) -> float:
     return 0.5
 
 
-PER_SENSOR_CAP = 4.0   # nats: trần bằng chứng một cảm biến được phép dồn
+PER_SENSOR_CAP = 4.0  # nats: trần bằng chứng một cảm biến được phép dồn
 CONFLICT_MARGIN = 0.5  # nats: radar+RF phải chê lớp của camera ít nhất chừng này
 DECEPTION_LEVEL = 0.5  # mức mâu thuẫn từ đó coi là nghi bị đánh lừa
 
@@ -51,11 +52,11 @@ DECEPTION_LEVEL = 0.5  # mức mâu thuẫn từ đó coi là nghi bị đánh l
 @dataclass
 class FusedState:
     logp: np.ndarray = field(default_factory=lambda: np.zeros(len(TARGET_KINDS)))
-    by_sensor: dict = field(default_factory=dict)   # bằng chứng dồn theo cảm biến
-    evidence: dict = field(default_factory=dict)   # sensor -> đóng góp (0..1)
-    seen: dict = field(default_factory=dict)       # sensor -> số khung có số đo
+    by_sensor: dict = field(default_factory=dict)  # bằng chứng dồn theo cảm biến
+    evidence: dict = field(default_factory=dict)  # sensor -> đóng góp (0..1)
+    seen: dict = field(default_factory=dict)  # sensor -> số khung có số đo
     conflict: float = 0.0
-    n_evidence: int = 0                            # số khung đã có bằng chứng nhận dạng
+    n_evidence: int = 0  # số khung đã có bằng chứng nhận dạng
 
     def probs(self) -> np.ndarray:
         z = self.logp - self.logp.max()
@@ -110,7 +111,7 @@ class IdentityFuser:
             second = float(np.sort(ph)[-2])
             if gap > CONFLICT_MARGIN:
                 s.conflict = min(1.0, s.conflict + 0.12)
-                contrib["eo"] = contrib["eo"] * 0.25   # hạ quyền camera khi nghi bị lừa
+                contrib["eo"] = contrib["eo"] * 0.25  # hạ quyền camera khi nghi bị lừa
             elif gap < 1e-9 and ph.max() - second > CONFLICT_MARGIN:
                 s.conflict = max(0.0, s.conflict - 0.05)
 
@@ -130,11 +131,10 @@ class IdentityFuser:
         for k in set(list(s.by_sensor) + list(contrib)):
             cap = PER_SENSOR_CAP
             if k == "eo":
-                cap *= (1.0 - 0.9 * s.conflict)
+                cap *= 1.0 - 0.9 * s.conflict
             if k in contrib:
                 acc = s.by_sensor.get(k, np.zeros(len(TARGET_KINDS))) + contrib[k]
-                s.evidence[k] = (s.evidence.get(k, 0.0) * 0.9
-                                 + float(np.abs(contrib[k]).sum()) * 0.1)
+                s.evidence[k] = s.evidence.get(k, 0.0) * 0.9 + float(np.abs(contrib[k]).sum()) * 0.1
             else:
                 acc = s.by_sensor.get(k, np.zeros(len(TARGET_KINDS))) * self.decay
             s.by_sensor[k] = np.clip(acc, -cap, cap)

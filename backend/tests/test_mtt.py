@@ -1,7 +1,7 @@
 """Kiểm thử bám nhiều mục tiêu (mtt.py) và các thành phần nó dựa vào."""
+
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -10,12 +10,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 from edge_ai.experiments import evaluate_mtt as EM  # noqa: E402
-from edge_ai.tracking import pipeline as PL  # noqa: E402
-from edge_ai.tracking.ekf import EKF                                   # noqa: E402
-from edge_ai.tracking.mtt import CHI2_GATE, MultiTracker, _coarse_gate  # noqa: E402
-from edge_ai.tracking.pipeline import Track                            # noqa: E402
-from edge_ai.sim.scene import Detection, Weather                  # noqa: E402
+from edge_ai.sim.scene import Detection, Weather  # noqa: E402
 from edge_ai.sim.sensors import RawProvider, false_alarms, sense_all  # noqa: E402
+from edge_ai.tracking import pipeline as PL  # noqa: E402
+from edge_ai.tracking.ekf import EKF  # noqa: E402
+from edge_ai.tracking.mtt import CHI2_GATE, MultiTracker, _coarse_gate  # noqa: E402
+from edge_ai.tracking.pipeline import Track  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -26,11 +26,11 @@ def models():
 def test_jacobian_giai_tich_khop_sai_phan_so():
     rng = np.random.default_rng(0)
     for _ in range(300):
-        x = np.concatenate([rng.uniform(-3000, 3000, 2), rng.uniform(5, 600, 1),
-                            rng.uniform(-40, 40, 3)])
+        x = np.concatenate(
+            [rng.uniform(-3000, 3000, 2), rng.uniform(5, 600, 1), rng.uniform(-40, 40, 3)]
+        )
         for s in ("radar", "eo", "rf", "lidar"):
-            np.testing.assert_allclose(EKF.H(s, x), EKF.H_numeric(s, x),
-                                       rtol=1e-5, atol=1e-7)
+            np.testing.assert_allclose(EKF.H(s, x), EKF.H_numeric(s, x), rtol=1e-5, atol=1e-7)
 
 
 def test_loc_tho_khong_bo_cap_nao_qua_cong_chi2():
@@ -43,11 +43,13 @@ def test_loc_tho_khong_bo_cap_nao_qua_cong_chi2():
         e = EKF(p, rng.normal(0, 10, 3), p_var=rng.uniform(4, 3000), v_var=rng.uniform(4, 400))
         trs.append(Track(i, e))
     dets = false_alarms(rng, 40, w)
-    for t in trs[:6]:                                 # thêm số đo sát vài vết
+    for t in trs[:6]:  # thêm số đo sát vài vết
         r = float(np.linalg.norm(t.ekf.pos))
         az = float(np.arctan2(t.ekf.pos[1], t.ekf.pos[0]))
         el = float(np.arcsin(t.ekf.pos[2] / r))
-        dets.append(Detection("radar", np.array([r + 5, az, el, 0.0]), np.diag([9, 1e-4, 2e-4, 0.06])))
+        dets.append(
+            Detection("radar", np.array([r + 5, az, el, 0.0]), np.diag([9, 1e-4, 2e-4, 0.06]))
+        )
         dets.append(Detection("rf", np.array([az + 0.01]), np.array([[0.003]])))
     for sensor in ("radar", "rf"):
         D = [d for d in dets if d.sensor == sensor]
@@ -62,6 +64,7 @@ def test_batch_cho_cung_ket_qua_nhu_tung_cai(models):
     rf, md, _ = models
     rng = np.random.default_rng(2)
     from edge_ai.sim.sensors import md_spec, rf_iq
+
     specs = [md_spec(k, 800.0, rng, 0.0) for k in ("multirotor", "bird", "clutter")]
     iqs = [rf_iq(e, rng) for e in (True, False, True)]
     for s, lp in zip(specs, PL.md_logp_batch(md, specs)):
@@ -70,7 +73,8 @@ def test_batch_cho_cung_ket_qua_nhu_tung_cai(models):
         np.testing.assert_allclose(lp, PL.rf_logp(rf, x), atol=1e-5)
 
 
-def _run(models, spec, n, seed, clutter=1.0, w=Weather()):
+def _run(models, spec, n, seed, clutter=1.0, w=None):
+    w = w or Weather()
     rng = np.random.default_rng(seed)
     tgs = EM.build_targets(spec, n, rng)
     prov = RawProvider(tgs, w, rng)
@@ -118,7 +122,7 @@ def test_hai_drone_sat_nhau_giu_dung_hai_vet_khong_doi_id(models):
             ids.append(msgs[int(np.argmin(d))]["tid"])
         assert ids[0] != ids[1]
         owner.append(tuple(ids))
-    assert len(set(owner)) == 1                       # không đổi ID
+    assert len(set(owner)) == 1  # không đổi ID
 
 
 def test_chi_vet_da_xac_nhan_moi_lay_du_lieu_tho(models):
@@ -140,10 +144,19 @@ def test_ospa():
 
 def test_du_doan_ekf_theo_lo_trung_tung_cai():
     import copy
+
     from edge_ai.tracking.ekf import predict_many
+
     rng = np.random.default_rng(3)
-    a = [EKF(rng.normal(0, 800, 3), rng.normal(0, 15, 3), sigma_a=rng.uniform(2, 9),
-             p_var=rng.uniform(1, 900)) for _ in range(9)]
+    a = [
+        EKF(
+            rng.normal(0, 800, 3),
+            rng.normal(0, 15, 3),
+            sigma_a=rng.uniform(2, 9),
+            p_var=rng.uniform(1, 900),
+        )
+        for _ in range(9)
+    ]
     b = copy.deepcopy(a)
     for f in a:
         f.predict(0.1)
@@ -156,6 +169,7 @@ def test_du_doan_ekf_theo_lo_trung_tung_cai():
 def test_tran_mang_nang_moi_khung_voi_10_muc_tieu(models):
     """10 mục tiêu: mỗi khung không quá trần, nhưng vết nào cũng vẫn được phân loại."""
     from edge_ai.tracking import mtt as MT
+
     spec = EM._fan(["multirotor"] * 10, spread=90.0)
     rng = np.random.default_rng(15)
     w = Weather()
@@ -176,4 +190,4 @@ def test_tran_mang_nang_moi_khung_voi_10_muc_tieu(models):
     assert max(f["iq"] for f in per_frame) <= MT.MAX_IQ_PER_FRAME
     conf = [t for t in mt.tracks.values() if t.confirmed]
     assert len(conf) == 10
-    assert all(t.last_md >= 0 for t in conf)          # vết nào cũng đã được phân loại
+    assert all(t.last_md >= 0 for t in conf)  # vết nào cũng đã được phân loại

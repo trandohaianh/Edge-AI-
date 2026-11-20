@@ -10,6 +10,7 @@ Cập nhật từng cảm biến một (sequential update) thay vì ghép thành
 đo: cảm biến nào có số đo ở khung đó thì dùng, thiếu thì bỏ qua — đúng với
 thực tế là cảm biến rơi rụng không đồng bộ.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -20,18 +21,24 @@ def _wrap(a: float) -> float:
 
 
 class EKF:
-    def __init__(self, p0: np.ndarray, v0: np.ndarray, sigma_a: float = 6.0,
-                 p_var: float = 400.0, v_var: float = 100.0):
+    def __init__(
+        self,
+        p0: np.ndarray,
+        v0: np.ndarray,
+        sigma_a: float = 6.0,
+        p_var: float = 400.0,
+        v_var: float = 100.0,
+    ):
         self.x = np.concatenate([p0, v0]).astype(float)
         self.P = np.diag([p_var] * 3 + [v_var] * 3).astype(float)
-        self.sigma_a = sigma_a      # m/s^2, mức cơ động giả định của mục tiêu
+        self.sigma_a = sigma_a  # m/s^2, mức cơ động giả định của mục tiêu
 
     # ------------------------------------------------------------- dự đoán
     def predict(self, dt: float):
         F = np.eye(6)
         F[:3, 3:] = np.eye(3) * dt
-        q = self.sigma_a ** 2
-        dt2, dt3, dt4 = dt * dt, dt ** 3, dt ** 4
+        q = self.sigma_a**2
+        dt2, dt3, dt4 = dt * dt, dt**3, dt**4
         Q = np.zeros((6, 6))
         Q[:3, :3] = np.eye(3) * dt4 / 4 * q
         Q[:3, 3:] = np.eye(3) * dt3 / 2 * q
@@ -149,8 +156,7 @@ class EKF:
         except np.linalg.LinAlgError:
             return float("inf")
 
-    def update(self, sensor: str, z: np.ndarray, R: np.ndarray,
-               gate: float = 16.0) -> bool:
+    def update(self, sensor: str, z: np.ndarray, R: np.ndarray, gate: float = 16.0) -> bool:
         """Trả về False nếu số đo bị cổng thống kê loại (nghi là nhiễu)."""
         hx = self.h(sensor, self.x)
         y = z - hx
@@ -174,7 +180,7 @@ class EKF:
         K = self.P @ H.T @ Sinv
         self.x = self.x + K @ y
         A = np.eye(6) - K @ H
-        self.P = A @ self.P @ A.T + K @ R @ K.T     # dạng Joseph: giữ đối xứng
+        self.P = A @ self.P @ A.T + K @ R @ K.T  # dạng Joseph: giữ đối xứng
         return True
 
     @property
@@ -200,15 +206,14 @@ def predict_many(filters: list[EKF], dt: float) -> None:
         return
     F = np.eye(6)
     F[:3, 3:] = np.eye(3) * dt
-    X = np.stack([f.x for f in filters])                    # [N,6]
-    P = np.stack([f.P for f in filters])                    # [N,6,6]
-    q = np.array([f.sigma_a ** 2 for f in filters])        # [N]
+    X = np.stack([f.x for f in filters])  # [N,6]
+    P = np.stack([f.P for f in filters])  # [N,6,6]
+    q = np.array([f.sigma_a**2 for f in filters])  # [N]
     Q1 = np.zeros((6, 6))
-    Q1[:3, :3] = np.eye(3) * dt ** 4 / 4
-    Q1[:3, 3:] = Q1[3:, :3] = np.eye(3) * dt ** 3 / 2
-    Q1[3:, 3:] = np.eye(3) * dt ** 2
+    Q1[:3, :3] = np.eye(3) * dt**4 / 4
+    Q1[:3, 3:] = Q1[3:, :3] = np.eye(3) * dt**3 / 2
+    Q1[3:, 3:] = np.eye(3) * dt**2
     X = X @ F.T
     P = np.einsum("ij,njk,lk->nil", F, P, F) + q[:, None, None] * Q1
     for f, x, p in zip(filters, X, P):
         f.x, f.P = x, p
-

@@ -1,0 +1,22 @@
+# Cài một lần:  pip install pre-commit && pre-commit install
+# Chạy tay:     pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      # chặn lỡ tay commit tệp lớn (trọng số mới, dữ liệu sinh ra); 1 MB
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.6
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format

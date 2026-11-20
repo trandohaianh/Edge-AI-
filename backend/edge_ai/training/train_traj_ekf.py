@@ -15,22 +15,22 @@ Cách sửa đúng là huấn luyện và đánh giá trên đúng thứ mà mô
 chạy: chuỗi trạng thái do EKF thật sinh ra, với mốc so sánh là phép ngoại
 suy từ chính vận tốc của EKF đó.
 """
+
 from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-from edge_ai.config import FRAME_DT, SEED
-from edge_ai.tracking.ekf import EKF
+from edge_ai.config import CACHE_DIR, FRAME_DT, MODELS_DIR, RESULTS_DIR, SEED  # noqa: F401
+from edge_ai.io_utils import write_json
 from edge_ai.ml.nets import TrajTransformer, count_params
 from edge_ai.sim.scene import TARGET_KINDS, Weather, make_scenario, sense
+from edge_ai.tracking.ekf import EKF
 
-from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR  # noqa: F401
 torch.set_num_threads(2)
 HIST, HOR = 20, 10
 POS_SCALE, VEL_SCALE = 100.0, 30.0
@@ -39,8 +39,12 @@ POS_SCALE, VEL_SCALE = 100.0, 30.0
 def roll_track(seed: int, n_frames: int = 190):
     """Chạy trọn vòng cảm biến + EKF, trả về (trạng thái EKF, quỹ đạo thật)."""
     rng = np.random.default_rng(seed)
-    w = Weather(fog=rng.uniform(0, .9), rain=rng.uniform(0, .8),
-                jamming=rng.uniform(0, .9), night=bool(rng.random() < .4))
+    w = Weather(
+        fog=rng.uniform(0, 0.9),
+        rain=rng.uniform(0, 0.8),
+        jamming=rng.uniform(0, 0.9),
+        night=bool(rng.random() < 0.4),
+    )
     kind = str(rng.choice(TARGET_KINDS))
     tg = make_scenario(n_frames, rng, w, kinds=[kind])[0]
     f = EKF(tg.pos[0] + rng.normal(0, 25, 3), tg.vel[0] + rng.normal(0, 6, 3))
@@ -58,18 +62,20 @@ def build(n_traj: int, seed: int, warm: int = 40):
     """Cửa sổ (lịch sử EKF -> tương lai THẬT), bỏ đoạn đầu lúc bộ lọc còn bám."""
     Xs, Ys, Bs = [], [], []
     rng = np.random.default_rng(seed)
-    for i in range(n_traj):
+    for _ in range(n_traj):
         P, V, TRUE = roll_track(int(rng.integers(1e9)))
         for t in range(max(HIST, warm), len(P) - HOR):
             p0 = P[t - 1]
-            Xs.append(np.concatenate([(P[t - HIST:t] - p0) / POS_SCALE,
-                                      V[t - HIST:t] / VEL_SCALE], axis=1))
-            Ys.append((TRUE[t:t + HOR] - p0) / POS_SCALE)
+            Xs.append(
+                np.concatenate(
+                    [(P[t - HIST : t] - p0) / POS_SCALE, V[t - HIST : t] / VEL_SCALE], axis=1
+                )
+            )
+            Ys.append((TRUE[t : t + HOR] - p0) / POS_SCALE)
             # mốc so sánh: ngoại suy bằng chính vận tốc EKF — đối thủ thật sự
             steps = (np.arange(1, HOR + 1) * FRAME_DT)[:, None]
             Bs.append((V[t - 1][None] * steps) / POS_SCALE)
-    return (np.asarray(Xs, np.float32), np.asarray(Ys, np.float32),
-            np.asarray(Bs, np.float32))
+    return (np.asarray(Xs, np.float32), np.asarray(Ys, np.float32), np.asarray(Bs, np.float32))
 
 
 def rmse(a, b):
@@ -85,18 +91,23 @@ def main():
     Xtr, Ytr, _ = build(260, SEED + 40)
     Xva, Yva, Bva = build(60, SEED + 41)
     Xte, Yte, Bte = build(90, SEED + 42)
-    print(f"[trajE] train={Xtr.shape} gen={time.time()-t0:.0f}s", flush=True)
-    print(f"[trajE] mốc so sánh (EKF vận tốc không đổi) trên val: "
-          f"{rmse(Bva, Yva):.2f} m", flush=True)
+    print(f"[trajE] train={Xtr.shape} gen={time.time() - t0:.0f}s", flush=True)
+    print(
+        f"[trajE] mốc so sánh (EKF vận tốc không đổi) trên val: {rmse(Bva, Yva):.2f} m", flush=True
+    )
 
     model = TrajTransformer(horizon=HOR)
     bs, epochs = 256, 16
     opt = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(
-        opt, max_lr=3e-3, total_steps=epochs * int(np.ceil(len(Xtr) / bs)))
+        opt, max_lr=3e-3, total_steps=epochs * int(np.ceil(len(Xtr) / bs))
+    )
     lossf = nn.SmoothL1Loss(beta=0.05)
-    dl = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(
-        torch.from_numpy(Xtr), torch.from_numpy(Ytr)), batch_size=bs, shuffle=True)
+    dl = torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(torch.from_numpy(Xtr), torch.from_numpy(Ytr)),
+        batch_size=bs,
+        shuffle=True,
+    )
     xva = torch.from_numpy(Xva)
 
     best, state = 1e9, None
@@ -116,7 +127,7 @@ def main():
             e = rmse(model(xva).numpy(), Yva)
         if e < best:
             best, state = e, {k: v.clone() for k, v in model.state_dict().items()}
-        print(f"  ep{ep+1:02d} loss={tot/len(Xtr):.5f} val_rmse={e:.2f} m", flush=True)
+        print(f"  ep{ep + 1:02d} loss={tot / len(Xtr):.5f} val_rmse={e:.2f} m", flush=True)
 
     model.load_state_dict(state)
     model.eval()
@@ -132,12 +143,13 @@ def main():
         "transformer_mean_m": round(float(tr_e.mean()), 2),
         "ekf_mean_m": round(float(ek_e.mean()), 2),
         "improvement_pct": round(float((1 - tr_e.mean() / ek_e.mean()) * 100), 1),
-        "params": count_params(model), "n_test_windows": int(len(Xte)),
+        "params": count_params(model),
+        "n_test_windows": int(len(Xte)),
     }
     print(json.dumps(res, indent=1, ensure_ascii=False))
     torch.save(model.state_dict(), MODELS_DIR / "traj_model.pt")
-    json.dump(res, open(RESULTS_DIR / "traj_metrics.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
-    print(f"[trajE] done {time.time()-t0:.0f}s")
+    write_json(RESULTS_DIR / "traj_metrics.json", res)
+    print(f"[trajE] done {time.time() - t0:.0f}s")
 
 
 if __name__ == "__main__":

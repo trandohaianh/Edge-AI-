@@ -3,23 +3,22 @@
 Hai mô hình dùng CHUNG một bộ dữ liệu (cùng hạt giống, cùng mẫu), nên chênh
 lệch độ chính xác là của riêng kiến trúc chứ không phải do dữ liệu khác nhau.
 """
+
 from __future__ import annotations
 
-import json
 import time
-from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-from edge_ai.config import RF_CLASSES, SEED
+from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR, RF_CLASSES, SEED  # noqa: F401
+from edge_ai.io_utils import read_json, write_json
 from edge_ai.ml.nets import count_params
-from edge_ai.sim.rf_sim import build_rf_dataset
 from edge_ai.ml.rf_stft import RFNetSTFT
+from edge_ai.sim.rf_sim import build_rf_dataset
 from edge_ai.training.train_detect import confusion, evaluate
 
-from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR  # noqa: F401
 torch.set_num_threads(2)
 
 
@@ -29,21 +28,21 @@ def main():
     cache = CACHE_DIR / "rf_cache.npz"
     if cache.exists():
         d = np.load(cache)
-        Xtr, ytr, Xva, yva, Xte, yte = (d[k] for k in
-                                        ["Xtr", "ytr", "Xva", "yva", "Xte", "yte"])
+        Xtr, ytr, Xva, yva, Xte, yte = (d[k] for k in ["Xtr", "ytr", "Xva", "yva", "Xte", "yte"])
     else:
         Xtr, ytr = build_rf_dataset(2200, SEED)
         Xva, yva = build_rf_dataset(500, SEED + 1)
         Xte, yte = build_rf_dataset(700, SEED + 2)
         np.savez(cache, Xtr=Xtr, ytr=ytr, Xva=Xva, yva=yva, Xte=Xte, yte=yte)
-    print(f"[rf2] data {Xtr.shape} in {time.time()-t0:.0f}s", flush=True)
+    print(f"[rf2] data {Xtr.shape} in {time.time() - t0:.0f}s", flush=True)
 
     model = RFNetSTFT(len(RF_CLASSES))
     print(f"[rf2] params={count_params(model):,}", flush=True)
     bs, epochs, lr = 64, 14, 2e-3
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(
-        opt, max_lr=lr, total_steps=epochs * int(np.ceil(len(ytr) / bs)))
+        opt, max_lr=lr, total_steps=epochs * int(np.ceil(len(ytr) / bs))
+    )
     lossf = nn.CrossEntropyLoss(label_smoothing=0.05)
     ds = torch.utils.data.TensorDataset(torch.from_numpy(Xtr), torch.from_numpy(ytr))
     dl = torch.utils.data.DataLoader(ds, batch_size=bs, shuffle=True)
@@ -63,7 +62,7 @@ def main():
         _, acc = evaluate(model, Xva, yva)
         if acc > best:
             best, state = acc, {k: v.clone() for k, v in model.state_dict().items()}
-        print(f"  ep{ep+1:02d} loss={tot/len(ytr):.4f} val_acc={acc:.4f}", flush=True)
+        print(f"  ep{ep + 1:02d} loss={tot / len(ytr):.4f} val_acc={acc:.4f}", flush=True)
 
     model.load_state_dict(state)
     p, acc = evaluate(model, Xte, yte)
@@ -86,14 +85,21 @@ def main():
     old = {}
     p_old = RESULTS_DIR / "rf_metrics.json"
     if p_old.exists():
-        old = json.load(open(p_old, encoding="utf-8"))
-    json.dump({"test_acc": float(acc), "confusion": cm.tolist(),
-               "classes": RF_CLASSES, "params": count_params(model),
-               "by_snr": by_snr, "arch": "STFT + CNN 2D",
-               "ablation_raw_iq_1dcnn_acc": old.get("test_acc"),
-               "n_test": int(len(yte))},
-              open(RESULTS_DIR / "rf_metrics.json", "w", encoding="utf-8"), indent=1)
-    print(f"[rf2] done {time.time()-t0:.0f}s")
+        old = read_json(p_old)
+    write_json(
+        RESULTS_DIR / "rf_metrics.json",
+        {
+            "test_acc": float(acc),
+            "confusion": cm.tolist(),
+            "classes": RF_CLASSES,
+            "params": count_params(model),
+            "by_snr": by_snr,
+            "arch": "STFT + CNN 2D",
+            "ablation_raw_iq_1dcnn_acc": old.get("test_acc"),
+            "n_test": int(len(yte)),
+        },
+    )
+    print(f"[rf2] done {time.time() - t0:.0f}s")
 
 
 if __name__ == "__main__":

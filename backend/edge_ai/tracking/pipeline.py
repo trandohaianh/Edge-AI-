@@ -9,6 +9,7 @@ nghĩa về mặt vật lý. Chúng chạy theo chu kỳ riêng, còn mỗi khun
 làm phần nhẹ: liên kết số đo, EKF, hợp nhất. Đây cũng là cách giữ được
 ngân sách 50 ms trên chip nhúng.
 """
+
 from __future__ import annotations
 
 import time
@@ -19,25 +20,36 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from edge_ai.config import (ALERT_THRESHOLD, CONFIRM_THRESHOLD, FRAME_DT, RADAR_CLASSES,
-                    RF_CLASSES)
-from edge_ai.tracking.ekf import EKF
-from edge_ai.tracking.fusion import DECEPTION_LEVEL, IdentityFuser, track_confidence
+from edge_ai.config import (  # noqa: F401
+    ALERT_THRESHOLD,
+    CACHE_DIR,
+    CONFIRM_THRESHOLD,
+    FRAME_DT,
+    MODELS_DIR,
+    RADAR_CLASSES,
+    RESULTS_DIR,
+    RF_CLASSES,
+)
 from edge_ai.ml.nets import MicroDopplerNet, TrajTransformer
 from edge_ai.ml.rf_stft import RFNetSTFT
 from edge_ai.sim.scene import TARGET_KINDS, Detection, Weather
+from edge_ai.tracking.ekf import EKF
+from edge_ai.tracking.fusion import DECEPTION_LEVEL, IdentityFuser, track_confidence
 
-from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR  # noqa: F401
 torch.set_num_threads(2)
 
 # Ánh xạ lớp của từng bộ phát hiện sang 3 lớp mục tiêu chung.
-MD_TO_TARGET = {"multirotor": "multirotor", "fixed_wing": "fixed_wing",
-                "bird": "bird", "clutter": None}
+MD_TO_TARGET = {
+    "multirotor": "multirotor",
+    "fixed_wing": "fixed_wing",
+    "bird": "bird",
+    "clutter": None,
+}
 HIST, HOR = 20, 10
-GAP_MIN = 3        # số khung gián đoạn tối thiểu mới coi là mất dấu
+GAP_MIN = 3  # số khung gián đoạn tối thiểu mới coi là mất dấu
 POS_SCALE, VEL_SCALE = 100.0, 30.0
-BLACKOUT_STEPS = 90   # số khung tối đa có dự đoán khi mất dấu (9 s)
-HIST_KEEP = 256       # số khung lịch sử giữ lại cho mỗi vết bám
+BLACKOUT_STEPS = 90  # số khung tối đa có dự đoán khi mất dấu (9 s)
+HIST_KEEP = 256  # số khung lịch sử giữ lại cho mỗi vết bám
 TIMING_KEEP = 10_000  # số mẫu thời gian giữ lại cho mỗi chặng
 MODEL_FILES = ("rf_model.pt", "md_model.pt", "traj_model.pt")
 
@@ -69,7 +81,8 @@ def load_models(allow_untrained: bool = False, data_dir: Path | None = None):
         raise FileNotFoundError(
             f"thiếu trọng số {missing} trong {data_dir}; chạy lại các bước huấn "
             "luyện trong README, hoặc gọi load_models(allow_untrained=True) nếu "
-            "chỉ cần thử luồng xử lý")
+            "chỉ cần thử luồng xử lý"
+        )
     for m in (rf, md, tj):
         m.trained = not missing
     return rf, md, tj
@@ -154,18 +167,18 @@ class Track:
     last_seen: int = 0
     confidence: float = 0.0
     status: str = "mới"
-    operator: str | None = None                   # chuyên viên xác nhận/bỏ qua
+    operator: str | None = None  # chuyên viên xác nhận/bỏ qua
     # trạng thái chốt tại thời điểm bắt đầu mất dấu, để ngoại suy
     blackout_from: int | None = None
     blackout_pos: np.ndarray | None = None
     blackout_vel: np.ndarray | None = None
     blackout_pred: np.ndarray | None = None
-    blackout_hist: list | None = None              # lịch sử để nối dự đoán tiếp
+    blackout_hist: list | None = None  # lịch sử để nối dự đoán tiếp
     # quản lý vết bám nhiều mục tiêu (mtt.py); Pipeline một mục tiêu bỏ qua
     born: int = 0
-    pos_seen: int = 0                              # khung cuối có số đo radar/LiDAR
-    last_md: int = -10**6                          # khung cuối chạy mạng micro-Doppler
-    last_rf: int = -10**6                          # khung cuối chạy mạng RF
+    pos_seen: int = 0  # khung cuối có số đo radar/LiDAR
+    last_md: int = -(10**6)  # khung cuối chạy mạng micro-Doppler
+    last_rf: int = -(10**6)  # khung cuối chạy mạng RF
     hits: deque = field(default_factory=lambda: deque(maxlen=8))
     confirmed: bool = True
 
@@ -179,8 +192,9 @@ class Pipeline:
         self.rf, self.md, self.tj = models or load_models()
         self.tracks: dict[int, Track] = {}
         self.timing: dict[str, deque] = {
-            k: deque(maxlen=TIMING_KEEP) for k in
-            ["preproc", "rf_net", "md_net", "assoc", "ekf", "fuse", "traj", "total"]}
+            k: deque(maxlen=TIMING_KEEP)
+            for k in ["preproc", "rf_net", "md_net", "assoc", "ekf", "fuse", "traj", "total"]
+        }
 
     # ---------------------------------------------------------------- helpers
     def _t(self, key, t0):
@@ -208,8 +222,15 @@ class Pipeline:
         self._t("md_net", t0)
 
     # ------------------------------------------------------------------ frame
-    def step(self, tid: int, dets: list[Detection], w: Weather, k: int,
-             iq: np.ndarray | None = None, spec: np.ndarray | None = None):
+    def step(
+        self,
+        tid: int,
+        dets: list[Detection],
+        w: Weather,
+        k: int,
+        iq: np.ndarray | None = None,
+        spec: np.ndarray | None = None,
+    ):
         """Xử lý một khung cho một vết bám. Trả về bản tin trạng thái.
 
         Dữ liệu thô có thể đưa qua ``iq``/``spec`` (áp cho mọi số đo RF/radar
@@ -252,8 +273,9 @@ class Pipeline:
         self._t("total", t_all)
         return msg
 
-    def advance(self, tr: Track, dets: list[Detection], w: Weather, k: int,
-                predict: bool = True) -> dict:
+    def advance(
+        self, tr: Track, dets: list[Detection], w: Weather, k: int, predict: bool = True
+    ) -> dict:
         """EKF + hợp nhất + dự đoán khi mất dấu cho MỘT vết bám, với các số
         đo đã được gán cho nó."""
         # 4) EKF: dự đoán rồi cập nhật tuần tự theo từng cảm biến
@@ -287,14 +309,14 @@ class Pipeline:
             # Chỉ coi là MẤT DẤU khi gián đoạn kéo dài: cảm biến rớt một hai
             # khung là chuyện thường, EKF tự lo được. Gọi Transformer vào lúc
             # đó chỉ thêm sai số.
-            if tr.blackout_from is None:       # vừa bắt đầu mất dấu: chốt mốc
+            if tr.blackout_from is None:  # vừa bắt đầu mất dấu: chốt mốc
                 tr.blackout_from = tr.last_seen
                 i0 = len(tr.hist) - 1 - (k - tr.last_seen)
                 tr.blackout_pos = tr.hist[i0][0]
                 tr.blackout_vel = tr.hist[i0][1]
-                tr.blackout_hist = list(tr.hist)[max(0, i0 + 1 - HIST):i0 + 1]
+                tr.blackout_hist = list(tr.hist)[max(0, i0 + 1 - HIST) : i0 + 1]
                 tr.blackout_pred = np.zeros((0, 3))
-            d = k - tr.blackout_from - 1       # đã mất dấu bao nhiêu khung
+            d = k - tr.blackout_from - 1  # đã mất dấu bao nhiêu khung
             # Nối dự đoán DẦN DẦN, mỗi lần một đoạn 1 giây, chỉ khi cần tới.
             # Bản cũ tính trọn 9 giây (9 lần gọi Transformer) ngay trong khung
             # đầu tiên mất dấu, tạo một gai thời gian xử lý đúng lúc hệ thống
@@ -303,15 +325,16 @@ class Pipeline:
             need = min(BLACKOUT_STEPS, max(0, d) + HOR)
             while len(tr.blackout_pred) < need:
                 tr.blackout_pred, tr.blackout_hist = self._extend(
-                    tr.blackout_pred, tr.blackout_hist)
+                    tr.blackout_pred, tr.blackout_hist
+                )
             pred = tr.blackout_pred[:BLACKOUT_STEPS]
             if 0 <= d < len(pred):
                 # Dùng dự đoán làm SỐ ĐO GIẢ để kéo vết bám theo đường cong
                 # đã học, thay vì để EKF trôi thẳng. Hiệp phương sai nới dần
                 # theo thời gian mất dấu: càng lâu càng bớt tin.
                 sd = 4.0 + 1.2 * d
-                tr.ekf.update("lidar", pred[d], np.eye(3) * sd ** 2, gate=1e9)
-            pred = pred[max(0, d):max(0, d) + HOR]
+                tr.ekf.update("lidar", pred[d], np.eye(3) * sd**2, gate=1e9)
+            pred = pred[max(0, d) : max(0, d) + HOR]
         self._t("traj", t0)
 
         if used:
@@ -328,14 +351,20 @@ class Pipeline:
         # dán nhãn ngụy trang tuy không lừa được nhận dạng nhưng lại TẮT được
         # cảnh báo: ở kịch bản S6 hệ thống chỉ hỏi người 0,3% số khung.
         deception = fused.conflict >= DECEPTION_LEVEL
-        ask = (tr.confidence >= CONFIRM_THRESHOLD
-               or (deception and tr.confidence >= ALERT_THRESHOLD))
+        ask = tr.confidence >= CONFIRM_THRESHOLD or (deception and tr.confidence >= ALERT_THRESHOLD)
         return {
-            "tid": tr.tid, "k": k, "pos": tr.ekf.pos.tolist(),
-            "vel": tr.ekf.vel.tolist(), "sigma": tr.ekf.pos_sigma(),
-            "sensors": sorted(set(used)), "kind": kind, "kind_p": p,
-            "probs": fused.probs().tolist(), "confidence": tr.confidence,
-            "conflict": fused.conflict, "status": tr.status,
+            "tid": tr.tid,
+            "k": k,
+            "pos": tr.ekf.pos.tolist(),
+            "vel": tr.ekf.vel.tolist(),
+            "sigma": tr.ekf.pos_sigma(),
+            "sensors": sorted(set(used)),
+            "kind": kind,
+            "kind_p": p,
+            "probs": fused.probs().tolist(),
+            "confidence": tr.confidence,
+            "conflict": fused.conflict,
+            "status": tr.status,
             "evidence": {k2: round(v, 3) for k2, v in fused.evidence.items()},
             "predicted": None if pred is None else pred.tolist(),
             "alert": tr.confidence >= ALERT_THRESHOLD,
@@ -347,8 +376,9 @@ class Pipeline:
         """Transformer: HOR (=1 giây) vị trí tương lai tuyệt đối."""
         h = hist[-HIST:]
         p0 = h[-1][0]
-        x = np.stack([np.concatenate([(a - p0) / POS_SCALE, b / VEL_SCALE])
-                      for a, b in h]).astype(np.float32)
+        x = np.stack([np.concatenate([(a - p0) / POS_SCALE, b / VEL_SCALE]) for a, b in h]).astype(
+            np.float32
+        )
         with torch.no_grad():
             d = self.tj(torch.from_numpy(x[None])).numpy()[0]
         return p0[None] + d * POS_SCALE
@@ -380,8 +410,11 @@ class Pipeline:
             if not len(v):
                 continue
             a = np.asarray(v)
-            out[k] = {"mean_ms": round(float(a.mean()), 3),
-                      "p95_ms": round(float(np.percentile(a, 95)), 3),
-                      "p99_ms": round(float(np.percentile(a, 99)), 3),
-                      "max_ms": round(float(a.max()), 3), "n": len(a)}
+            out[k] = {
+                "mean_ms": round(float(a.mean()), 3),
+                "p95_ms": round(float(np.percentile(a, 95)), 3),
+                "p99_ms": round(float(np.percentile(a, 99)), 3),
+                "max_ms": round(float(a.max()), 3),
+                "n": len(a),
+            }
         return out

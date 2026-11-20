@@ -13,11 +13,12 @@ trên băng rộng với burst đều đặn; WiFi là burst OFDM rộng, thưa 
 Bluetooth nhảy tần hẹp 1 MHz. Những khác biệt này là có thật và đủ để
 phân loại, nên bộ phân loại học được thứ nó cũng sẽ học trên dữ liệu thật.
 """
+
 from __future__ import annotations
 
 import numpy as np
 
-from edge_ai.config import RF_FS, RF_SEG, RF_CLASSES
+from edge_ai.config import RF_CLASSES, RF_FS, RF_SEG
 
 
 def _awgn(rng: np.random.Generator, n: int, sigma: float) -> np.ndarray:
@@ -82,8 +83,13 @@ def _multipath(rng, x, fs):
     return y
 
 
-def make_segment(label: str, rng: np.random.Generator, snr_db: float | None = None,
-                 n: int = RF_SEG, fs: float = RF_FS) -> np.ndarray:
+def make_segment(
+    label: str,
+    rng: np.random.Generator,
+    snr_db: float | None = None,
+    n: int = RF_SEG,
+    fs: float = RF_FS,
+) -> np.ndarray:
     """Một đoạn I/Q của một lớp, đã chuẩn hóa công suất."""
     if snr_db is None:
         snr_db = rng.uniform(-6, 24)
@@ -109,7 +115,7 @@ def make_segment(label: str, rng: np.random.Generator, snr_db: float | None = No
         # OFDM đổi ký hiệu mỗi ~4 us -> pha nhảy theo khối
         sym = int(4e-6 * fs)
         for i0 in range(0, n, sym):
-            x[i0:i0 + sym] *= np.exp(1j * rng.uniform(0, 2 * np.pi))
+            x[i0 : i0 + sym] *= np.exp(1j * rng.uniform(0, 2 * np.pi))
         x *= _burst_mask(rng, n, rng.uniform(0.4, 1.2), rng.uniform(0.6, 3.0), fs)
 
     elif label == "bluetooth":

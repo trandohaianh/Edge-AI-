@@ -14,12 +14,21 @@ và trải rộng tới ±2*v_tip/lambda. Chim vỗ cánh ở 2–9 Hz nên ch�
 chậm hơn hẳn và không có blade flash. Đây chính là cơ sở để phân biệt drone
 với chim, và là thứ mô hình học được.
 """
+
 from __future__ import annotations
 
 import numpy as np
 
-from edge_ai.config import (BIRD, FIXED_WING, MD_SHAPE, MULTIROTOR, RADAR_DWELL,
-                    RADAR_LAMBDA, RADAR_NFFT, RADAR_PRF)
+from edge_ai.config import (
+    BIRD,
+    FIXED_WING,
+    MD_SHAPE,
+    MULTIROTOR,
+    RADAR_DWELL,
+    RADAR_LAMBDA,
+    RADAR_NFFT,
+    RADAR_PRF,
+)
 
 
 def _stft_power(x: np.ndarray) -> np.ndarray:
@@ -36,7 +45,7 @@ def _stft_power(x: np.ndarray) -> np.ndarray:
     frames = []
     for k in range(n_fr):
         i = k * hop
-        seg = x[i:i + RADAR_NFFT] * win
+        seg = x[i : i + RADAR_NFFT] * win
         frames.append(np.fft.fftshift(np.abs(np.fft.fft(seg)) ** 2))
     return np.asarray(frames, dtype=np.float32).T  # [RADAR_NFFT, n_fr]
 
@@ -55,8 +64,13 @@ def _norm(P: np.ndarray) -> np.ndarray:
     return (np.clip(S, -40, 0) / 40.0 + 1.0).astype(np.float32)
 
 
-def micro_doppler(kind: str, rng: np.random.Generator, snr_db: float | None = None,
-                  v_radial: float | None = None, rain: float = 0.0) -> np.ndarray:
+def micro_doppler(
+    kind: str,
+    rng: np.random.Generator,
+    snr_db: float | None = None,
+    v_radial: float | None = None,
+    rain: float = 0.0,
+) -> np.ndarray:
     """Spectrogram micro-Doppler chuẩn hóa MD_SHAPE = [64,128] của một mục tiêu."""
     if snr_db is None:
         snr_db = rng.uniform(0, 22)
@@ -83,11 +97,12 @@ def micro_doppler(kind: str, rng: np.random.Generator, snr_db: float | None = No
                 # vận tốc chiếu của một điểm trên cánh, lấy trung bình dọc cánh
                 for frac in (0.55, 0.8, 1.0):
                     v = v_tip * frac * np.sin(2 * np.pi * f_rot * t + th0)
-                    amp = 0.42 * frac ** 2 / n_rot
+                    amp = 0.42 * frac**2 / n_rot
                     # blade flash: phản xạ mạnh khi cánh vuông góc tia
                     flash = np.abs(np.cos(2 * np.pi * f_rot * t + th0)) ** 8
                     x = x + amp * (0.3 + 0.7 * flash) * np.exp(
-                        1j * (phase + 2 * np.pi * (2 * v / RADAR_LAMBDA) * t))
+                        1j * (phase + 2 * np.pi * (2 * v / RADAR_LAMBDA) * t)
+                    )
     elif kind == "bird":
         wb = rng.uniform(*BIRD["wingbeat"])
         amp_v = rng.uniform(*BIRD["amp"])
@@ -108,8 +123,9 @@ def micro_doppler(kind: str, rng: np.random.Generator, snr_db: float | None = No
         nr = int(20 * rain)
         for _ in range(nr):
             v = rng.normal(-6.0, 1.5)
-            x = x + rain * 0.08 * np.exp(1j * 2 * np.pi * (2 * v / RADAR_LAMBDA) * t
-                                         + 1j * rng.uniform(0, 6.28))
+            x = x + rain * 0.08 * np.exp(
+                1j * 2 * np.pi * (2 * v / RADAR_LAMBDA) * t + 1j * rng.uniform(0, 6.28)
+            )
 
     p = np.mean(np.abs(x) ** 2) + 1e-12
     x = x / np.sqrt(p)
@@ -120,6 +136,7 @@ def micro_doppler(kind: str, rng: np.random.Generator, snr_db: float | None = No
 
 def build_md_dataset(n_per_class: int, seed: int, snr_range=(0, 22), rain_p: float = 0.25):
     from edge_ai.config import RADAR_CLASSES
+
     rng = np.random.default_rng(seed)
     xs, ys = [], []
     for ci, name in enumerate(RADAR_CLASSES):
@@ -127,7 +144,7 @@ def build_md_dataset(n_per_class: int, seed: int, snr_range=(0, 22), rain_p: flo
             rain = rng.uniform(0.2, 1.0) if rng.random() < rain_p else 0.0
             xs.append(micro_doppler(name, rng, snr_db=rng.uniform(*snr_range), rain=rain))
             ys.append(ci)
-    X = np.asarray(xs, dtype=np.float32)[:, None]   # [N,1,64,128]
+    X = np.asarray(xs, dtype=np.float32)[:, None]  # [N,1,64,128]
     y = np.asarray(ys, dtype=np.int64)
     idx = rng.permutation(len(y))
     return X[idx], y[idx]

@@ -10,6 +10,7 @@ Chạy trên máy đích (Jetson, Raspberry Pi, x86...) để có số của ch�
     python -m edge_ai.experiments.bench_edge            # in ra và ghi data/edge_bench.json
     python -m edge_ai.experiments.bench_edge --threads 4
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,12 +22,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from edge_ai.config import LATENCY_BUDGET_MS, MD_EVERY, RF_EVERY
+from edge_ai.config import LATENCY_BUDGET_MS, MD_EVERY, MODELS_DIR, RESULTS_DIR, RF_EVERY
 from edge_ai.ml.nets import count_params
-from edge_ai.config import MODELS_DIR, RESULTS_DIR
-from edge_ai.tracking.pipeline import HIST, MODEL_FILES, Pipeline, load_models, warmup
-from edge_ai.tracking.mtt import MAX_IQ_PER_FRAME, MAX_SPEC_PER_FRAME
 from edge_ai.sim.sensors import md_due, rf_due
+from edge_ai.tracking.mtt import MAX_IQ_PER_FRAME, MAX_SPEC_PER_FRAME
+from edge_ai.tracking.pipeline import HIST, MODEL_FILES, Pipeline, load_models, warmup
 
 
 def _bench(fn, n: int) -> dict:
@@ -38,10 +38,13 @@ def _bench(fn, n: int) -> dict:
         fn()
         ts.append((time.perf_counter() - t0) * 1e3)
     a = np.asarray(ts)
-    return {"mean_ms": round(float(a.mean()), 3),
-            "p50_ms": round(float(np.percentile(a, 50)), 3),
-            "p99_ms": round(float(np.percentile(a, 99)), 3),
-            "max_ms": round(float(a.max()), 3), "n": n}
+    return {
+        "mean_ms": round(float(a.mean()), 3),
+        "p50_ms": round(float(np.percentile(a, 50)), 3),
+        "p99_ms": round(float(np.percentile(a, 99)), 3),
+        "max_ms": round(float(a.max()), 3),
+        "n": n,
+    }
 
 
 def main(threads: int = 2, n: int = 300, out: Path | None = RESULTS_DIR / "edge_bench.json"):
@@ -52,19 +55,29 @@ def main(threads: int = 2, n: int = 300, out: Path | None = RESULTS_DIR / "edge_
     iq = torch.randn(1, 2, 2048)
     sp = torch.rand(1, 1, 64, 128)
     x = torch.randn(1, HIST, 6)
-    res = {"host": {"machine": platform.machine(), "processor": platform.processor(),
-                    "python": platform.python_version(), "torch": torch.__version__,
-                    "threads": threads},
-           "budget_ms": LATENCY_BUDGET_MS, "models": {}}
+    res = {
+        "host": {
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+            "python": platform.python_version(),
+            "torch": torch.__version__,
+            "threads": threads,
+        },
+        "budget_ms": LATENCY_BUDGET_MS,
+        "models": {},
+    }
     with torch.no_grad():
-        for name, m, inp, f in (("rf_stft_cnn", rf, iq, MODEL_FILES[0]),
-                                ("micro_doppler_cnn", md, sp, MODEL_FILES[1]),
-                                ("traj_transformer", tj, x, MODEL_FILES[2])):
+        for name, m, inp, f in (
+            ("rf_stft_cnn", rf, iq, MODEL_FILES[0]),
+            ("micro_doppler_cnn", md, sp, MODEL_FILES[1]),
+            ("traj_transformer", tj, x, MODEL_FILES[2]),
+        ):
             res["models"][name] = {
                 "params": count_params(m),
                 "file_kb": round((MODELS_DIR / f).stat().st_size / 1024, 1),
                 "fp32_weights_kb": round(count_params(m) * 4 / 1024, 1),
-                "latency": _bench(lambda m=m, inp=inp: m(inp), n)}
+                "latency": _bench(lambda m=m, inp=inp: m(inp), n),
+            }
         # Khung xấu nhất NẾU hai mạng nặng chạy cùng khung (bản cũ: 6,7% số
         # khung; bản mới: không bao giờ — xem sensors.rf_due).
         res["worst_frame_rf_plus_md"] = _bench(lambda: (rf(iq), md(sp)), n)
@@ -77,12 +90,15 @@ def main(threads: int = 2, n: int = 300, out: Path | None = RESULTS_DIR / "edge_
 
     hist = [(np.random.randn(3) * 100, np.random.randn(3)) for _ in range(HIST)]
     res["blackout_full_rollout_9s"] = _bench(lambda: pipe.rollout(hist, 90), max(30, n // 10))
-    res["blackout_one_extension_1s"] = _bench(
-        lambda: pipe._extend(np.zeros((0, 3)), hist), n)
-    res["schedule"] = {"rf_every_frames": RF_EVERY, "md_every_frames": MD_EVERY,
-                       "frames_with_both_nets_pct": round(100 * float(np.mean(
-                           [rf_due(k) and md_due(k) for k in range(600)])), 1),
-                       "rf_runs_per_s": round(sum(rf_due(k) for k in range(600)) / 60, 2)}
+    res["blackout_one_extension_1s"] = _bench(lambda: pipe._extend(np.zeros((0, 3)), hist), n)
+    res["schedule"] = {
+        "rf_every_frames": RF_EVERY,
+        "md_every_frames": MD_EVERY,
+        "frames_with_both_nets_pct": round(
+            100 * float(np.mean([rf_due(k) and md_due(k) for k in range(600)])), 1
+        ),
+        "rf_runs_per_s": round(sum(rf_due(k) for k in range(600)) / 60, 2),
+    }
     print(json.dumps(res, indent=1, ensure_ascii=False))
     if out is not None:
         with open(out, "w", encoding="utf-8") as fh:

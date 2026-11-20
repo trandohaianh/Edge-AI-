@@ -31,6 +31,7 @@ không ai cho biết điểm nào của ai. Module này giải đúng bài toán
 Sau khi đã gán, mỗi vết bám đi qua đúng ``Pipeline.advance`` (EKF, hợp nhất
 nhận dạng, dự đoán khi mất dấu) như bản một mục tiêu.
 """
+
 from __future__ import annotations
 
 import time
@@ -40,25 +41,25 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from edge_ai.config import FRAME_DT, MD_EVERY, RF_EVERY
-from edge_ai.tracking.ekf import EKF, predict_many
-from edge_ai.tracking.pipeline import Pipeline, Track
 from edge_ai.sim.scene import Detection, Weather
 from edge_ai.sim.sensors import EOTurret
+from edge_ai.tracking.ekf import EKF, predict_many
+from edge_ai.tracking.pipeline import Pipeline, Track
 
 # Cổng χ² mức 99,9% theo số chiều của số đo.
 CHI2_GATE = {"radar": 18.47, "lidar": 16.27, "eo": 13.82, "rf": 10.83}
 SENSOR_ORDER = ("lidar", "radar", "eo", "rf")
-POS_SENSORS = ("lidar", "radar")       # chỉ các cảm biến cho đủ toạ độ 3D mới sinh được vết
-CONFIRM_M, CONFIRM_N = 3, 5            # xác nhận: 3 trong 5 khung gần nhất có số đo
-TENTATIVE_MAX_AGE = 6                  # vết tạm quá 6 khung chưa xác nhận thì xoá
-DELETE_AFTER = 40                      # vết đã xác nhận: mất dấu 4 s thì xoá
-DELETE_SIGMA = 250.0                   # hoặc độ bất định vị trí quá 250 m
-MERGE_DIST = 12.0                      # hai vết cách nhau < 12 m liên tục: trùng
+POS_SENSORS = ("lidar", "radar")  # chỉ các cảm biến cho đủ toạ độ 3D mới sinh được vết
+CONFIRM_M, CONFIRM_N = 3, 5  # xác nhận: 3 trong 5 khung gần nhất có số đo
+TENTATIVE_MAX_AGE = 6  # vết tạm quá 6 khung chưa xác nhận thì xoá
+DELETE_AFTER = 40  # vết đã xác nhận: mất dấu 4 s thì xoá
+DELETE_SIGMA = 250.0  # hoặc độ bất định vị trí quá 250 m
+MERGE_DIST = 12.0  # hai vết cách nhau < 12 m liên tục: trùng
 MERGE_FRAMES = 5
-SPAWN_SEP = 40.0                       # trong cùng khung, số đo mới cách vết vừa sinh < 40 m thì bỏ
-MAX_SPEC_PER_FRAME = 2                 # trần số ảnh phổ micro-Doppler chạy mạng mỗi khung
-MAX_IQ_PER_FRAME = 1                   # trần số đoạn I/Q chạy mạng mỗi khung
-CAMERA_DWELL = 10                      # khung camera dừng ở mỗi vết bám
+SPAWN_SEP = 40.0  # trong cùng khung, số đo mới cách vết vừa sinh < 40 m thì bỏ
+MAX_SPEC_PER_FRAME = 2  # trần số ảnh phổ micro-Doppler chạy mạng mỗi khung
+MAX_IQ_PER_FRAME = 1  # trần số đoạn I/Q chạy mạng mỗi khung
+CAMERA_DWELL = 10  # khung camera dừng ở mỗi vết bám
 _BIG = 1e9
 
 
@@ -67,10 +68,10 @@ def radar_to_state(z: np.ndarray, R: np.ndarray) -> tuple[np.ndarray, np.ndarray
     r, az, el, rr = (float(v) for v in z)
     u = np.array([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az), np.sin(el)])
     p = r * u
-    v = rr * u                      # chỉ biết thành phần xuyên tâm
+    v = rr * u  # chỉ biết thành phần xuyên tâm
     sa = float(np.sqrt(R[1, 1]))
     p_var = float(R[0, 0] + (r * sa * 1.6) ** 2)
-    return p, v, max(p_var, 25.0), 20.0 ** 2
+    return p, v, max(p_var, 25.0), 20.0**2
 
 
 def _det_xyz_sigma(d: Detection) -> tuple[np.ndarray, float]:
@@ -104,7 +105,7 @@ def _coarse_gate(sensor: str, trs: list[Track], D: list[Detection]) -> np.ndarra
 class MultiTracker:
     def __init__(self, models=None, pipe: Pipeline | None = None, raw_provider=None):
         self.pipe = pipe or Pipeline(models)
-        self.raw = raw_provider         # (det, "spec"|"iq") -> dữ liệu thô
+        self.raw = raw_provider  # (det, "spec"|"iq") -> dữ liệu thô
         self.tracks: dict[int, Track] = {}
         self.next_id = 1
         self.turret = EOTurret(0.0)
@@ -118,8 +119,13 @@ class MultiTracker:
     def _spawn(self, d: Detection, k: int) -> Track:
         if d.sensor == "radar":
             p, v, p_var, v_var = radar_to_state(d.z, d.R)
-        else:                                            # lidar
-            p, v, p_var, v_var = np.asarray(d.z, float), np.zeros(3), float(d.R[0, 0]) + 4.0, 20.0 ** 2
+        else:  # lidar
+            p, v, p_var, v_var = (
+                np.asarray(d.z, float),
+                np.zeros(3),
+                float(d.R[0, 0]) + 4.0,
+                20.0**2,
+            )
         tr = Track(self.next_id, EKF(p, v, p_var=p_var, v_var=v_var))
         tr.born = tr.last_seen = tr.pos_seen = k
         tr.confirmed = False
@@ -145,8 +151,7 @@ class MultiTracker:
             D = [d for d in dets if d.sensor == sensor]
             if not D:
                 continue
-            trs = [t for t in self.tracks.values()
-                   if sensor in POS_SENSORS or t.confirmed]
+            trs = [t for t in self.tracks.values() if sensor in POS_SENSORS or t.confirmed]
             if not trs:
                 if sensor in POS_SENSORS:
                     free += D
@@ -231,8 +236,11 @@ class MultiTracker:
         vết mới bám tiếp, vết cũ trôi theo dự đoán và thành vết giả. Ở đây số
         đo vị trí chưa ai nhận được thử lại với cổng nới rộng 4 lần, chỉ với
         các vết ĐÃ XÁC NHẬN mà khung này chưa có số đo vị trí nào."""
-        hungry = [self.tracks[t] for t, ds in assigned.items()
-                  if self.tracks[t].confirmed and not any(d.sensor in POS_SENSORS for d in ds)]
+        hungry = [
+            self.tracks[t]
+            for t, ds in assigned.items()
+            if self.tracks[t].confirmed and not any(d.sensor in POS_SENSORS for d in ds)
+        ]
         if not hungry or not free:
             return free
         C = np.full((len(hungry), len(free)), _BIG)
@@ -270,8 +278,9 @@ class MultiTracker:
         if self.raw is None:
             return
         for sensor, what, period, cap, attr in (
-                ("radar", "spec", MD_EVERY, MAX_SPEC_PER_FRAME, "last_md"),
-                ("rf", "iq", RF_EVERY, MAX_IQ_PER_FRAME, "last_rf")):
+            ("radar", "spec", MD_EVERY, MAX_SPEC_PER_FRAME, "last_md"),
+            ("rf", "iq", RF_EVERY, MAX_IQ_PER_FRAME, "last_rf"),
+        ):
             due = []
             for tid, ds in assigned.items():
                 tr = self.tracks[tid]
@@ -302,7 +311,7 @@ class MultiTracker:
         conf = [t for t in self.tracks.values() if t.confirmed]
         seen = set()
         for i, a in enumerate(conf):
-            for b in conf[i + 1:]:
+            for b in conf[i + 1 :]:
                 key = (min(a.tid, b.tid), max(a.tid, b.tid))
                 if np.linalg.norm(a.ekf.pos - b.ekf.pos) < MERGE_DIST:
                     seen.add(key)
@@ -317,8 +326,9 @@ class MultiTracker:
     def point_camera(self, k: int) -> float:
         """Quay camera lần lượt qua các vết bám đã xác nhận mà chưa bị coi là
         chim, mỗi vết ``CAMERA_DWELL`` khung. Gọi sau ``step``."""
-        cand = sorted(t.tid for t in self.tracks.values()
-                      if t.confirmed and t.fuser.state.top()[0] != "bird")
+        cand = sorted(
+            t.tid for t in self.tracks.values() if t.confirmed and t.fuser.state.top()[0] != "bird"
+        )
         if not cand:
             cand = sorted(t.tid for t in self.tracks.values() if t.confirmed)
         if cand:

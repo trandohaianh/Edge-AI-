@@ -6,9 +6,9 @@ RF, biên của phép làm trơn quỹ đạo, và luật cộng bằng chứng.
 
 Chạy:  python -m pytest   (ở gốc repo; cấu hình trong pyproject.toml)
 """
+
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -17,12 +17,19 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 from edge_ai import config as C  # noqa: E402
-from edge_ai.tracking.ekf import EKF                                   # noqa: E402
-from edge_ai.tracking.fusion import IdentityFuser, PER_SENSOR_CAP, reliability, track_confidence  # noqa: E402
-from edge_ai.sim.radar_sim import micro_doppler                   # noqa: E402
-from edge_ai.sim.rf_sim import make_segment                       # noqa: E402
-from edge_ai.sim.scene import (TARGET_KINDS, Detection, Weather, make_scenario,  # noqa: E402
-                   make_trajectory, sense, spherical)
+from edge_ai.sim.radar_sim import micro_doppler  # noqa: E402
+from edge_ai.sim.rf_sim import make_segment  # noqa: E402
+from edge_ai.sim.scene import (  # noqa: E402
+    TARGET_KINDS,
+    Detection,
+    Weather,
+    make_scenario,
+    make_trajectory,
+    sense,
+    spherical,
+)
+from edge_ai.tracking.ekf import EKF  # noqa: E402
+from edge_ai.tracking.fusion import PER_SENSOR_CAP, IdentityFuser, reliability, track_confidence  # noqa: E402
 
 
 # ----------------------------------------------------------------- vật lý
@@ -36,8 +43,9 @@ def test_prf_phu_duoc_doppler_dau_canh():
     radius = max(C.MULTIROTOR["radius"])
     v_tip = 2 * np.pi * radius * f_rot
     f_d = 2 * v_tip / C.RADAR_LAMBDA
-    assert C.RADAR_PRF / 2 > f_d, (
-        f"dải Doppler ±{C.RADAR_PRF/2:.0f} Hz không phủ nổi {f_d:.0f} Hz")
+    assert f_d < C.RADAR_PRF / 2, (
+        f"dải Doppler ±{C.RADAR_PRF / 2:.0f} Hz không phủ nổi {f_d:.0f} Hz"
+    )
 
 
 def test_canh_quat_trai_pho_rong_hon_chim():
@@ -55,7 +63,7 @@ def test_canh_quat_trai_pho_rong_hon_chim():
             S = micro_doppler(kind, rng, snr_db=20, v_radial=0.0)
             prof = S.mean(axis=1)
             c = len(prof) // 2
-            vals.append(float(np.concatenate([prof[:c - 8], prof[c + 8:]]).mean()))
+            vals.append(float(np.concatenate([prof[: c - 8], prof[c + 8 :]]).mean()))
         return float(np.mean(vals))
 
     assert pedestal("multirotor") > pedestal("bird") * 4
@@ -67,7 +75,7 @@ def test_micro_doppler_dung_hinh_dang_va_khoang_gia_tri():
     S = micro_doppler("multirotor", rng, snr_db=15)
     assert S.shape == C.MD_SHAPE
     assert S.dtype == np.float32
-    assert 0.0 <= S.min() and S.max() <= 1.0 + 1e-6
+    assert S.min() >= 0.0 and S.max() <= 1.0 + 1e-6
 
 
 # -------------------------------------------------------------------- RF
@@ -112,7 +120,7 @@ def test_toc_do_quy_dao_hop_ly(kind):
             _, v = make_trajectory(kind, 150, rng, pat)
             sp.append(np.linalg.norm(v, axis=1))
     sp = np.concatenate(sp)
-    assert np.percentile(sp, 99) < 60.0, f"{kind}: p99 = {np.percentile(sp,99):.1f} m/s"
+    assert np.percentile(sp, 99) < 60.0, f"{kind}: p99 = {np.percentile(sp, 99):.1f} m/s"
 
 
 def test_lam_tron_khong_keo_tut_hai_dau():
@@ -165,7 +173,7 @@ def test_ekf_loai_so_do_bat_thuong():
     f.predict(0.1)
     r, az, el = spherical(f.pos)
     good = np.array([r, az, el, -10.0])
-    R = np.diag([5.0 ** 2, 1e-4, 1e-4, 0.5 ** 2])
+    R = np.diag([5.0**2, 1e-4, 1e-4, 0.5**2])
     assert f.update("radar", good, R) is True
     bad = np.array([r + 900.0, az, el, -10.0])
     assert f.update("radar", bad, R) is False
@@ -206,8 +214,10 @@ def test_radar_va_rf_thang_duoc_camera_bi_danh_lua():
     f = IdentityFuser()
     true_i = TARGET_KINDS.index("multirotor")
     wrong_i = TARGET_KINDS.index("fixed_wing")
-    good = np.full(3, np.log(0.1)); good[true_i] = np.log(0.8)
-    bad = np.full(3, np.log(0.04)); bad[wrong_i] = np.log(0.92)
+    good = np.full(3, np.log(0.1))
+    good[true_i] = np.log(0.8)
+    bad = np.full(3, np.log(0.04))
+    bad[wrong_i] = np.log(0.92)
     for k in range(120):
         dets = [Detection("eo", np.zeros(2), np.eye(2), bad)]
         if k % 4 == 0:
@@ -223,8 +233,10 @@ def test_do_tin_cay_can_thoi_gian_quan_sat():
     """Không được 'đủ tin để báo người' ngay ở khung đầu tiên."""
     f = IdentityFuser()
     lp = np.log(np.array([0.95, 0.025, 0.025]))
-    dets = [Detection("radar", np.zeros(4), np.eye(4), lp),
-            Detection("rf", np.zeros(1), np.eye(1), lp)]
+    dets = [
+        Detection("radar", np.zeros(4), np.eye(4), lp),
+        Detection("rf", np.zeros(1), np.eye(1), lp),
+    ]
     f.update(dets, Weather(), 400.0)
     assert track_confidence(f.state, 5.0, 2) < C.CONFIRM_THRESHOLD
     for _ in range(40):
@@ -244,8 +256,7 @@ def test_chim_khong_phat_song_rf():
 
 def test_suong_mu_lam_cam_lidar_va_camera():
     rng = np.random.default_rng(10)
-    tg = make_scenario(150, rng, Weather(), kinds=["multirotor"],
-                       patterns=["approach"], r0=600)[0]
+    tg = make_scenario(150, rng, Weather(), kinds=["multirotor"], patterns=["approach"], r0=600)[0]
     # Xoay mục tiêu vào đúng góc nhìn camera: EO/IR chỉ có 60 độ, mục tiêu
     # sinh ở phương vị ngẫu nhiên thì phần lớn lần chạy camera không thấy gì
     # và phép so sánh trở thành 0 với 0.
@@ -273,8 +284,7 @@ def test_camera_o_xa_tien_ve_phan_bo_deu_chu_khong_chi_sai():
     """
     rng = np.random.default_rng(12)
     w = Weather()
-    tg = make_scenario(200, rng, w, kinds=["multirotor"], patterns=["approach"],
-                       r0=1150)[0]
+    tg = make_scenario(200, rng, w, kinds=["multirotor"], patterns=["approach"], r0=1150)[0]
     seen = 0
     for k in range(200):
         for d in sense(tg, k, w, rng):

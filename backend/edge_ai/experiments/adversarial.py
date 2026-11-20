@@ -15,22 +15,20 @@ So sánh 3 cấu hình trên CÙNG một tập mục tiêu và CÙNG một chu�
   2. hợp nhất cộng đều, không phòng vệ
   3. hợp nhất có hạ quyền khi phát hiện mâu thuẫn  (bản hệ thống dùng)
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 
-from edge_ai.config import SEED
-from edge_ai.tracking.fusion import IdentityFuser, reliability
-from edge_ai.tracking.pipeline import md_logp, rf_logp, load_models
-from edge_ai.sim.sensors import md_due, radar_snr, rf_due
+from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR, SEED  # noqa: F401
 from edge_ai.sim.radar_sim import micro_doppler
 from edge_ai.sim.rf_sim import make_segment
 from edge_ai.sim.scene import TARGET_KINDS, Weather, make_scenario, rotate_into_view, sense
-
-from edge_ai.config import CACHE_DIR, MODELS_DIR, RESULTS_DIR  # noqa: F401
+from edge_ai.sim.sensors import md_due, radar_snr, rf_due
+from edge_ai.tracking.fusion import IdentityFuser
+from edge_ai.tracking.pipeline import load_models, md_logp, rf_logp
 
 
 class NaiveFuser(IdentityFuser):
@@ -58,9 +56,15 @@ def run(n_runs: int = 12, n_frames: int = 200, patch: bool = True):
         rng = np.random.default_rng(SEED + 7000 + r)
         # Buộc mục tiêu bay vào tầm camera, nếu không thì nhãn ngụy trang
         # chẳng bao giờ có cơ hội tác động và phép thử thành vô nghĩa.
-        tg = make_scenario(n_frames, rng, w, kinds=["multirotor"],
-                           patch_ids={0} if patch else set(),
-                           patterns=["approach"], r0=900.0)[0]
+        tg = make_scenario(
+            n_frames,
+            rng,
+            w,
+            kinds=["multirotor"],
+            patch_ids={0} if patch else set(),
+            patterns=["approach"],
+            r0=900.0,
+        )[0]
         # r0 chỉ chốt CỰ LY; phương vị vẫn ngẫu nhiên nên bản cũ có tới 2/3
         # số lần chạy mục tiêu nằm ngoài góc nhìn camera và bị bỏ qua khi
         # chấm điểm — kết quả "100%" thực chất dựa trên 2–4 lần chạy. Xoay
@@ -77,10 +81,12 @@ def run(n_runs: int = 12, n_frames: int = 200, patch: bool = True):
                 # phần ảo của đoạn kia: cấu trúc pha giữa I và Q (thứ STFT
                 # dựa vào để thấy tần số dương/âm) bị phá, mạng RF nhận một
                 # tín hiệu không thể có ngoài đời.
-                seg = make_segment("drone_ctrl" if tg.emits_rf else "noise", rng,
-                                   snr_db=rng.uniform(4, 20))
-                lp = rf_logp(rf_net, np.stack([seg.real.astype(np.float32),
-                                               seg.imag.astype(np.float32)]))
+                seg = make_segment(
+                    "drone_ctrl" if tg.emits_rf else "noise", rng, snr_db=rng.uniform(4, 20)
+                )
+                lp = rf_logp(
+                    rf_net, np.stack([seg.real.astype(np.float32), seg.imag.astype(np.float32)])
+                )
                 for d in dets:
                     if d.sensor == "rf":
                         d.cls_logp = lp
@@ -120,8 +126,7 @@ def main():
         "clean_eo_only_acc": round(clean["eo_only"], 4),
         "n_frames_scored": n,
         "n_runs": 12,
-        "attack": ("Nhãn ngụy trang khiến bộ nhận dạng ảnh đọc sai lớp với "
-                   "độ tự tin 0,92."),
+        "attack": ("Nhãn ngụy trang khiến bộ nhận dạng ảnh đọc sai lớp với độ tự tin 0,92."),
     }
     print(json.dumps(res, indent=1, ensure_ascii=False))
     with open(RESULTS_DIR / "adversarial.json", "w", encoding="utf-8") as f:

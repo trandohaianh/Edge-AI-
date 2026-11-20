@@ -10,12 +10,20 @@ Gồm:
 * bệ quay camera được radar dẫn hướng (``EOTurret``),
 * cảm biến nhiều mục tiêu kèm báo động giả của radar (``sense_all``).
 """
+
 from __future__ import annotations
 
 import numpy as np
 
-from edge_ai.config import (EO_SLEW_DEG_S, FRAME_DT, MD_EVERY, MD_PHASE, RADAR_RANGE,
-                    RF_EVERY, RF_PHASE)
+from edge_ai.config import (
+    EO_SLEW_DEG_S,
+    FRAME_DT,
+    MD_EVERY,
+    MD_PHASE,
+    RADAR_RANGE,
+    RF_EVERY,
+    RF_PHASE,
+)
 from edge_ai.sim.radar_sim import micro_doppler
 from edge_ai.sim.rf_sim import make_segment
 from edge_ai.sim.scene import Detection, Target, Weather, sense
@@ -37,11 +45,11 @@ def radar_snr(r: float) -> float:
     return float(np.clip(30 - 20 * np.log10(max(r, 100) / 300), 2, 26))
 
 
-def rf_iq(emits_rf: bool, rng: np.random.Generator,
-          snr: tuple[float, float] = (2, 20)) -> np.ndarray:
+def rf_iq(
+    emits_rf: bool, rng: np.random.Generator, snr: tuple[float, float] = (2, 20)
+) -> np.ndarray:
     """Một đoạn I/Q [2, N] float32. I và Q lấy từ CÙNG một đoạn tín hiệu."""
-    s = make_segment("drone_ctrl" if emits_rf else "noise", rng,
-                     snr_db=rng.uniform(*snr))
+    s = make_segment("drone_ctrl" if emits_rf else "noise", rng, snr_db=rng.uniform(*snr))
     return np.stack([s.real, s.imag]).astype(np.float32)
 
 
@@ -75,8 +83,9 @@ class EOTurret:
         return self.az
 
 
-def attach_raw(dets: list[Detection], target: Target | None, k: int,
-               w: Weather, rng: np.random.Generator) -> None:
+def attach_raw(
+    dets: list[Detection], target: Target | None, k: int, w: Weather, rng: np.random.Generator
+) -> None:
     """Gắn dữ liệu thô vào số đo khi tới lịch: I/Q cho RF, ảnh phổ cho radar.
 
     ``target=None`` là báo động giả: radar thấy "thứ gì đó" mà thực ra là
@@ -100,14 +109,20 @@ def false_alarms(rng: np.random.Generator, rate: float, w: Weather) -> list[Dete
         el = rng.uniform(0.0, 0.08)
         sr, sa = 2.5 + 0.002 * r, np.deg2rad(0.6) * (1 + 0.5 * w.rain)
         z = np.array([r, az, el, rng.normal(0, 1.5)])
-        R = np.diag([sr ** 2, sa ** 2, (sa * 1.6) ** 2, 0.25 ** 2])
+        R = np.diag([sr**2, sa**2, (sa * 1.6) ** 2, 0.25**2])
         out.append(Detection("radar", z, R, None, {"truth_id": -1}))
     return out
 
 
-def sense_all(targets: list[Target], k: int, w: Weather, rng: np.random.Generator,
-              eo_az: float | None = None, clutter_rate: float = 0.0,
-              raw: bool = True) -> list[Detection]:
+def sense_all(
+    targets: list[Target],
+    k: int,
+    w: Weather,
+    rng: np.random.Generator,
+    eo_az: float | None = None,
+    clutter_rate: float = 0.0,
+    raw: bool = True,
+) -> list[Detection]:
     """Số đo của mọi mục tiêu trong một khung, TRỘN LẪN như cảm biến thật trả
     về. ``meta['truth_id']`` chỉ dùng để chấm điểm, bộ bám không được đọc."""
     dets: list[Detection] = []
@@ -127,7 +142,7 @@ def sense_all(targets: list[Target], k: int, w: Weather, rng: np.random.Generato
 
 
 class RawProvider:
-    """"Phần cứng" theo yêu cầu: bộ bám chọn số đo nào cần dữ liệu thô
+    """ "Phần cứng" theo yêu cầu: bộ bám chọn số đo nào cần dữ liệu thô
     (ảnh phổ micro-Doppler, đoạn I/Q) rồi mới xin — như radar thật chỉ dừng
     chùm tia lấy chữ ký trên những vết đang bám. Mô phỏng dùng
     ``meta['truth_id']`` để biết số đo đó thật ra của ai (-1: báo động giả)."""
@@ -143,4 +158,3 @@ class RawProvider:
         if what == "spec":
             return md_spec(tg.kind if tg else "clutter", float(d.z[0]), self.rng, self.w.rain)
         return rf_iq(tg.emits_rf if tg else False, self.rng)
-

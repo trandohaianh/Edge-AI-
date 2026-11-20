@@ -10,8 +10,10 @@ Kiểm tra một tệp:
 
     python src/audit_log.py logs/audit.jsonl
 """
+
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import sys
@@ -42,10 +44,8 @@ def last_hash(path: Path) -> str:
         for line in f:
             line = line.strip()
             if line:
-                try:
+                with contextlib.suppress(json.JSONDecodeError):
                     last = json.loads(line).get("hash", last)
-                except json.JSONDecodeError:
-                    pass
     return last
 
 

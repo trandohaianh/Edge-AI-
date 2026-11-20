@@ -19,6 +19,7 @@ def read_json(path: str | Path) -> Any:
 def write_json(path: str | Path, obj: Any, indent: int = 1) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    # newline="\n": xuống dòng LF cả trên Windows, khớp .gitattributes
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(obj, f, indent=indent, ensure_ascii=False)
         f.write("\n")  # kết thúc bằng xuống dòng, như mọi tệp văn bản khác

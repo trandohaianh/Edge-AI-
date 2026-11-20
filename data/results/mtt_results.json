@@ -4,62 +4,10 @@
    "scenario": "M1 · 3 drone + 1 chim, báo động giả 1/khung",
    "n_targets": 4,
    "clutter_per_frame": 1.0,
-   "ospa_m": 1.423,
+   "ospa_m": 1.138,
    "ospa_m_ci95": [
-    0.881,
-    1.965
-   ],
-   "coverage": 1.0,
-   "coverage_ci95": [
-    1.0,
-    1.0
-   ],
-   "id_switches": 0.4,
-   "false_tracks_per_frame": 0.013,
-   "cls_acc": 1.0,
-   "cls_acc_ci95": [
-    1.0,
-    1.0
-   ],
-   "bird_operator_frames": 0.0,
-   "lat_mean_ms": 22.817,
-   "lat_p99_ms": 132.43,
-   "lat_max_ms": 170.445
-  },
-  {
-   "scenario": "M2 · 2 drone bay sát nhau (cách 2°), báo động giả 1/khung",
-   "n_targets": 2,
-   "clutter_per_frame": 1.0,
-   "ospa_m": 2.556,
-   "ospa_m_ci95": [
-    -0.592,
-    5.704
-   ],
-   "coverage": 1.0,
-   "coverage_ci95": [
-    1.0,
-    1.0
-   ],
-   "id_switches": 0.0,
-   "false_tracks_per_frame": 0.048,
-   "cls_acc": 1.0,
-   "cls_acc_ci95": [
-    1.0,
-    1.0
-   ],
-   "bird_operator_frames": 0.0,
-   "lat_mean_ms": 17.21,
-   "lat_p99_ms": 72.314,
-   "lat_max_ms": 134.092
-  },
-  {
-   "scenario": "M3 · bầy 6 drone trong mưa, báo động giả 3/khung",
-   "n_targets": 6,
-   "clutter_per_frame": 3.0,
-   "ospa_m": 1.387,
-   "ospa_m_ci95": [
-    1.289,
-    1.484
+    1.025,
+    1.25
    ],
    "coverage": 1.0,
    "coverage_ci95": [
@@ -74,9 +22,61 @@
     1.0
    ],
    "bird_operator_frames": 0.0,
-   "lat_mean_ms": 35.531,
-   "lat_p99_ms": 186.714,
-   "lat_max_ms": 307.723
+   "lat_mean_ms": 23.516,
+   "lat_p99_ms": 61.419,
+   "lat_max_ms": 115.129
+  },
+  {
+   "scenario": "M2 · 2 drone bay sát nhau (cách 2°), báo động giả 1/khung",
+   "n_targets": 2,
+   "clutter_per_frame": 1.0,
+   "ospa_m": 1.677,
+   "ospa_m_ci95": [
+    0.692,
+    2.663
+   ],
+   "coverage": 1.0,
+   "coverage_ci95": [
+    1.0,
+    1.0
+   ],
+   "id_switches": 0.0,
+   "false_tracks_per_frame": 0.007,
+   "cls_acc": 1.0,
+   "cls_acc_ci95": [
+    1.0,
+    1.0
+   ],
+   "bird_operator_frames": 0.0,
+   "lat_mean_ms": 13.608,
+   "lat_p99_ms": 31.229,
+   "lat_max_ms": 45.814
+  },
+  {
+   "scenario": "M3 · bầy 6 drone trong mưa, báo động giả 3/khung",
+   "n_targets": 6,
+   "clutter_per_frame": 3.0,
+   "ospa_m": 1.407,
+   "ospa_m_ci95": [
+    1.317,
+    1.496
+   ],
+   "coverage": 1.0,
+   "coverage_ci95": [
+    1.0,
+    1.0
+   ],
+   "id_switches": 0.0,
+   "false_tracks_per_frame": 0.0,
+   "cls_acc": 1.0,
+   "cls_acc_ci95": [
+    1.0,
+    1.0
+   ],
+   "bird_operator_frames": 0.0,
+   "lat_mean_ms": 32.687,
+   "lat_p99_ms": 58.554,
+   "lat_max_ms": 73.63
   },
   {
    "scenario": "M4 · 2 drone + 2 chim, sương mù đêm",
@@ -100,9 +100,9 @@
     1.0
    ],
    "bird_operator_frames": 0.0,
-   "lat_mean_ms": 10.559,
-   "lat_p99_ms": 26.973,
-   "lat_max_ms": 40.544
+   "lat_mean_ms": 17.628,
+   "lat_p99_ms": 33.918,
+   "lat_max_ms": 40.26
   }
  ],
  "frames": 200,
@@ -114,41 +114,41 @@
   {
    "targets": 1,
    "repeats": 5,
-   "min_mean_ms": 3.168,
-   "min_p99_ms": 9.185,
-   "min_max_ms": 9.901,
-   "raw_p99_median_ms": 10.167,
+   "min_mean_ms": 5.949,
+   "min_p99_ms": 19.106,
+   "min_max_ms": 19.21,
+   "raw_p99_median_ms": 22.389,
    "frames_over_budget_min": 0,
    "frames": 117
   },
   {
    "targets": 3,
    "repeats": 5,
-   "min_mean_ms": 9.055,
-   "min_p99_ms": 17.089,
-   "min_max_ms": 18.696,
-   "raw_p99_median_ms": 24.897,
+   "min_mean_ms": 15.246,
+   "min_p99_ms": 27.523,
+   "min_max_ms": 28.05,
+   "raw_p99_median_ms": 39.141,
    "frames_over_budget_min": 0,
    "frames": 117
   },
   {
    "targets": 6,
    "repeats": 5,
-   "min_mean_ms": 21.992,
-   "min_p99_ms": 29.1,
-   "min_max_ms": 29.892,
-   "raw_p99_median_ms": 54.035,
+   "min_mean_ms": 35.914,
+   "min_p99_ms": 49.168,
+   "min_max_ms": 49.361,
+   "raw_p99_median_ms": 89.871,
    "frames_over_budget_min": 0,
    "frames": 117
   },
   {
    "targets": 10,
    "repeats": 5,
-   "min_mean_ms": 20.156,
-   "min_p99_ms": 30.586,
-   "min_max_ms": 30.92,
-   "raw_p99_median_ms": 48.514,
-   "frames_over_budget_min": 0,
+   "min_mean_ms": 38.538,
+   "min_p99_ms": 50.861,
+   "min_max_ms": 52.676,
+   "raw_p99_median_ms": 92.143,
+   "frames_over_budget_min": 4,
    "frames": 117
   }
  ],

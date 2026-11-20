@@ -23,16 +23,16 @@ mục bên dưới ứng với một dòng trong danh sách đó và gồm: hi�
 | Lint + format | Không có | ruff lint + format, pre-commit, CI. **0 lỗi** |
 | Không viết cả phần mềm trong một tệp lớn | Tệp lớn nhất 424 dòng | Tệp lớn nhất 631 dòng (`figures.py`, mỗi hình một hàm), không tệp nào > 800 |
 | Commit tại các mốc ổn định | Có từ đợt 1 | 6 commit trong đợt này, mỗi commit sau khi test xanh và trước mỗi thay đổi rủi ro |
-| HTTPS riêng | Không có | `deploy/docker-compose.yml` + Caddy |
-| Đầu ra: khung chạy được, có quản lý phiên bản | — | 59/59 test xanh, ruff sạch, pre-commit sạch, dashboard chạy được bằng đúng lệnh của container |
+| HTTPS riêng | Không có | `deploy/docker-compose.yml` + Caddy; **đã build và chạy thật** |
+| Đầu ra: khung chạy được, có quản lý phiên bản | — | 61/61 test xanh, ruff sạch, pre-commit sạch; container và HTTPS qua Caddy đã chạy thật |
 
 Bổ sung về kỹ thuật (báo cáo 02, mục 7):
 - Trần số mạng nặng mỗi khung (2 ảnh phổ + 1 đoạn I/Q), ưu tiên vết chưa chắc nhãn.
 - Dự đoán EKF theo lô bằng numpy.
 
-**Chưa làm được: build Docker thật.** Docker Desktop không chạy trên máy lúc
-làm việc, và lệnh khởi động nó bị môi trường chặn với lỗi “Access is denied”
-(xem mục 10).
+Docker và Caddy đã được **build và chạy thử thật** (mục 10). Lần chạy thử này
+bắt được một lỗi cấu hình Caddy. Khi đo lại cũng tìm và sửa thêm hai lỗi của
+bộ bám (mục 9.5).
 
 ---
 
@@ -76,7 +76,7 @@ sang `sim/scenarios.py`.
 bền là nhật ký quyết định (JSONL chuỗi băm, volume `edge-audit`). README nói
 rõ điều này để không ai đi tìm thư mục `database/`.
 
-**Kiểm tra.** 59/59 test xanh sau khi di chuyển. Lệnh chạy dashboard:
+**Kiểm tra.** 56/56 test xanh ngay sau khi di chuyển (hiện 61/61). Lệnh chạy dashboard:
 `python -m uvicorn edge_ai.api.server:app --app-dir backend --port 8099`.
 
 ## 2. README
@@ -207,7 +207,9 @@ trúc, format toàn bộ) đều có một commit mốc **ngay trước** đó:
 | `4f87841` | Tái cấu trúc sang `backend/edge_ai/…` | Rủi ro; 56/56 xanh rồi mới commit, và là mốc **trước** format toàn bộ |
 | `806999b` | ruff, pre-commit, CI, `.env.example` | 57/57 xanh |
 | `dd59b40` | Dockerfile mới + compose + Caddy | — |
-| *(cuối)* | `scenarios.py`, quy tắc phụ thuộc, README, CONVENTIONS, báo cáo này | 59/59 xanh |
+| `039f1da` | Tối ưu phần bám, phương pháp đo bằng phát lại, `scenarios.py`, quy tắc phụ thuộc, README, CONVENTIONS | 59/59 xanh |
+| `1c859db` | Sửa vết trùng và vết rác tìm ra khi đo lại; sửa lỗi email của Caddy; Docker đã kiểm thật | 61/61 xanh |
+| *(cuối)* | Hoàn thiện báo cáo này, `write_json` ghi LF | 61/61 xanh |
 
 ## 9. Sửa nốt việc của báo cáo 02, mục 7 (không cần Jetson)
 
@@ -240,7 +242,86 @@ khung, toàn bộ EKF chỉ ~2 ms.
 
 ### 9.3 Đo lại độ trễ
 
-KẾT_QUẢ_ĐO
+**Vấn đề của phép đo.** Máy đo là laptop Windows dùng chung, trong lúc làm
+việc tải nền dao động 28–87% CPU (trình duyệt, các phiên đang xử lý 3 dự án
+khác). Trong một lần đo, microbenchmark “2 ảnh phổ + 1 I/Q” cho p99 tới
+**1.180 ms**, dù từng mạng riêng lẻ chỉ ~5 ms. Thời gian wall trên máy này
+không dùng làm số liệu được.
+
+**Phương pháp mới** (`experiments/evaluate_mtt.py::replay_latency`):
+1. Ghi lại một chuỗi 120 khung (số đo và dữ liệu thô).
+2. Phát lại đúng chuỗi đó qua 5 bộ bám mới.
+3. Lấy thời gian **nhỏ nhất của từng khung** qua 5 lần phát lại.
+
+Bộ bám là tất định (có test `test_bo_bam_tat_dinh_nen_phat_lai_do_duoc_do_tre`),
+nên chênh lệch giữa các lần phát lại chỉ do tiến trình khác chen vào; `timeit`
+của Python cũng lấy min theo cùng lý do. Đã thử đo CPU-time của luồng
+(`time.thread_time`), nhưng trên Windows độ phân giải chỉ 15,6 ms nên bỏ.
+
+**Kết quả: khung xấu nhất (max của chuỗi min), 2 lần chạy cùng mã**
+(báo động giả 1/khung, torch 2 luồng, CPU x86, đã trừ thời gian mô phỏng cảm biến):
+
+| Số mục tiêu | Trung bình | p99 | Khung xấu nhất | p99 thô (không lấy min) | Khung > 50 ms |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 3,2–5,9 ms | 9,2–19,1 ms | 9,9–19,2 ms | 10–22 ms | 0 |
+| 3 | 9,1–15,2 ms | 17,1–27,5 ms | 18,7–28,1 ms | 25–39 ms | 0 |
+| 6 | 22,0–35,9 ms | 29,1–49,2 ms | 29,9–49,4 ms | 54–90 ms | 0 |
+| 10 | 20,2–38,5 ms | 30,6–50,9 ms | 30,9–52,7 ms | 49–92 ms | 0 / 4 trên 117 |
+
+Microbenchmark (`data/results/edge_bench.json`, min / trung vị / p99):
+
+| Phép đo | min | p50 | p99 |
+|---|---:|---:|---:|
+| Mạng RF (1 đoạn) | 3,6 ms | 6,0 ms | 9,3 ms |
+| Mạng micro-Doppler (1 ảnh) | 3,4 ms | 6,5 ms | 11,2 ms |
+| Khung có trần: 2 ảnh phổ + 1 I/Q | 10,4 ms | 17,3 ms | 27,0 ms |
+| Mất dấu, bản cũ (dự đoán trọn 9 s) | 7,2 ms | 8,6 ms | 14,3 ms |
+| Mất dấu, bản mới (nối thêm 1 s) | 0,8 ms | 1,3 ms | 2,5 ms |
+
+**Kết luận, nói đúng mức.**
+- **Đến 3 mục tiêu** hệ thống nằm trong ngân sách 50 ms với biên rộng, kể cả
+  ở số đo thô.
+- **Từ 6 đến 10 mục tiêu**, khi máy bớt tải, khung xấu nhất khoảng 30 ms.
+  Khi máy bị tải liên tục, nó chạm 50 ms (4/117 khung vượt ở lần đo xấu hơn).
+- Nhờ có trần mạng nặng, chi phí phần mạng nơ-ron **không còn tăng theo số
+  mục tiêu**.
+- Phần còn tăng tuyến tính là phần bám bằng Python. Phần này đã được tối ưu
+  (xem 9.4).
+- Câu trả lời dứt khoát chỉ có trên phần cứng đích, chạy riêng.
+
+### 9.4 Tối ưu phần bám (không đổi kết quả)
+
+cProfile cho thấy phần bám tốn chủ yếu ở hàng chục nghìn lời gọi numpy trên
+**số vô hướng**. Ví dụ `np.clip` bị gọi 16.497 lần cho 120 khung, mỗi lần mất
+cỡ micro giây chỉ cho chi phí gọi. Đã sửa ba chỗ:
+- `h()`, `H()`, `pos_sigma()` của EKF tính bằng `math`.
+- Phép kẹp trong `fusion.py` dùng hàm `_clip` vô hướng.
+- Kiểm tra trùng vết tính khoảng cách mọi cặp trong một phép numpy.
+
+Đo **cùng lúc, cùng máy**, chạy bản cũ trong worktree tạm: phần bám 10 mục
+tiêu (không tính mạng) giảm từ **6,68 xuống 4,44 ms (−34%)**. Đầu ra trùng
+tuyệt đối với trước: cùng ID vết, chênh lệch vị trí 0,0 m.
+
+### 9.5 Hai lỗi bám tìm ra nhờ đo lại
+
+Lần đo lại sau khi thêm trần cho thấy M1 có 0,4 lần đổi ID và M2 có 0,05 vết
+giả mỗi khung (trước đó đều là 0). Kiểm từng lượt:
+
+| Lỗi | Nguyên nhân | Sửa | Kết quả |
+|---|---|---|---|
+| M1, 1/5 lượt: 2 lần đổi ID, 14 khung có vết trùng | Vết đã xác nhận trượt cổng radar 2 khung; vết tạm sinh từ chính các số đo đó nhận tiếp chúng rồi được xác nhận. Bước “cứu vết” chỉ xét số đo thừa | Cứu vết được **giành lại** số đo đang nằm ở vết tạm | 0 đổi ID (`test_cuu_vet_gianh_lai_so_do_tu_vet_tam`) |
+| M2, 1/5 lượt: 0,24 vết giả/khung | Vết rác cách mục tiêu 2,2 km, được xác nhận nhờ 3 báo động giả tình cờ rơi vào cổng, rồi được chờ 4 s như vết thật | Vết “non” (< 10 lần đo vị trí) chỉ được chờ 0,5 s; vết “chín” giữ 4 s cho dự đoán khi mất dấu | 0,24 → 0,035 (`test_vet_non_bi_xoa_nhanh_vet_chin_duoc_cho_lau`) |
+
+Trần mạng *không* trực tiếp gây ra hai lỗi trên. Nó chỉ làm đổi chuỗi số
+ngẫu nhiên, nên các sự kiện hiếm này lộ ra ở seed khác. Đánh giá đầy đủ cuối
+cùng (`data/results/mtt_results.json`, 5 lượt × 200 khung mỗi kịch bản):
+
+| Kịch bản | OSPA (KTC 95%) | Độ phủ | Đổi ID | Vết giả/khung | Nhận dạng |
+|---|---|---|---|---|---|
+| M1 · 3 drone + 1 chim | 1,14 m (1,03–1,25) | 100% | 0 | 0 | 100% |
+| M2 · 2 drone cách 2° | 1,68 m (0,69–2,66) | 100% | 0 | 0,007 | 100% |
+| M3 · 6 drone, mưa, 3 báo động giả/khung | 1,41 m (1,32–1,50) | 100% | 0 | 0 | 100% |
+| M4 · 2 drone + 2 chim, sương mù đêm | 3,54 m (3,26–3,82) | 100% | 0 | 0 | 99,9% |
 
 ## 10. HTTPS riêng: Docker + Caddy
 
@@ -283,20 +364,31 @@ docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
   - `/api/health`, `/` và `/api/metrics` đều trả 200;
   - POST thiếu mã trả 401, POST có mã trả 200.
 
-**Chưa kiểm tra.** `docker build` thật và HTTPS qua Caddy. Docker Desktop
-không chạy, và lệnh khởi động nó (`Docker Desktop.exe`) bị môi trường chặn
-với lỗi “Access is denied”. Tôi không vượt sandbox để mở nó. Khi Docker
-Desktop đã chạy, các lệnh cần chạy là:
+**Build và chạy thật** (Docker 29.8.0, project `edge-ai-test`, cổng
+18080/18443 để không đụng dịch vụ khác):
 
-```bash
-docker build -f deploy/Dockerfile -t edge-ai .
-docker run --rm -d -p 8099:8099 -e EDGE_API_TOKEN=thu --name edge edge-ai
-curl -fsS http://127.0.0.1:8099/api/health && docker rm -f edge
-EDGE_API_TOKEN=thu docker compose -f deploy/docker-compose.yml up -d --build
-curl -kfsS https://localhost/api/health
-```
+| Kiểm tra | Kết quả |
+|---|---|
+| `docker build -f deploy/Dockerfile` | Thành công sau 7 phút 15 giây; ảnh 1,71 GB (phần lớn là torch CPU) |
+| Container chạy bằng user nào | `uid=10001(edge)`, không phải root |
+| `HEALTHCHECK` của Docker | `healthy` |
+| `/api/health`, `/` qua container | 200, `models_trained: true`, `auth_required: true` |
+| POST không mã / có mã | 401 / 200 |
+| Compose + Caddy: `https://localhost:18443/api/health` | 200; chứng chỉ do CA nội bộ của Caddy cấp (`issuer: local`) |
+| Header qua HTTPS | `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options: DENY` |
+| `http://localhost:18080/` | 308 chuyển sang `https://` |
+| POST qua Caddy không mã / có mã | 401 / 200 |
+| Nhật ký qua lần khởi động lại `app` | Chuỗi băm nối tiếp; `audit_log` báo hợp lệ |
+| Dọn dẹp | `docker compose … down -v`, xoá ảnh thử; không dừng Docker Desktop |
 
-Job `docker` trong CI cũng chạy đúng chuỗi build và kiểm tra sống này.
+**Lỗi tìm ra nhờ build thật.** Bản đầu đặt `email {$ACME_EMAIL:…}` trong
+Caddyfile và `ACME_EMAIL: ${ACME_EMAIL:-}` trong compose. Compose truyền
+**chuỗi rỗng** khi biến không được đặt; giá trị mặc định của Caddy chỉ áp
+dụng khi biến *không tồn tại*. Kết quả là Caddy nhận `email` không có đối số
+và khởi động lại liên tục. Đã bỏ chỉ thị email dựa trên biến môi trường;
+chú thích trong Caddyfile hướng dẫn thêm tay khi cần.
+
+Job `docker` trong CI chạy lại chuỗi build và kiểm tra sống này ở mỗi lần push.
 
 ## 11. Đẩy lên GitHub
 
@@ -317,8 +409,14 @@ Trước khi push đã kiểm:
 
 ## 12. Việc còn lại
 
-1. Build và chạy thử Docker + Caddy khi Docker Desktop đã bật (lệnh ở mục 10).
-2. Đo trên Jetson Orin (`python -m edge_ai.experiments.bench_edge --threads 4`).
-3. Sinh lại DOCX/PDF/slide theo số mới (README, mục 7).
-4. Cân nhắc chuyển `docs/*.docx|pdf|pptx` sang Git LFS hoặc GitHub Releases
-   nếu chúng còn được cập nhật thường xuyên.
+1. Đo trên Jetson Orin, máy chạy riêng:
+   `python -m edge_ai.experiments.bench_edge --threads 4` và
+   `python -m edge_ai.experiments.evaluate_mtt`. Đây là cách duy nhất trả lời
+   dứt khoát câu hỏi 6–10 mục tiêu có nằm trong 50 ms hay không.
+2. Nếu trên Jetson 10 mục tiêu vẫn chạm ngân sách, có hai hướng:
+   - hạ trần xuống 1 ảnh phổ mỗi khung;
+   - xuất hai CNN sang ONNX Runtime hoặc TensorRT FP16.
+3. Sinh lại DOCX/PDF/slide theo số mới (README, mục 7). Việc này do chủ dự án làm.
+4. Cân nhắc chuyển `docs/*.docx|pdf|pptx` (tệp lớn nhất ~2 MB, tổng ~16 MB)
+   sang GitHub Releases nếu chúng còn được cập nhật thường xuyên.
+5. Đẩy lên GitHub khi có tên repo (mục 11).

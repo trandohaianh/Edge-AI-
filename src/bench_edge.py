@@ -24,6 +24,7 @@ import torch
 from config import LATENCY_BUDGET_MS, MD_EVERY, RF_EVERY
 from models import count_params
 from pipeline import DATA, HIST, MODEL_FILES, Pipeline, load_models, warmup
+from mtt import MAX_IQ_PER_FRAME, MAX_SPEC_PER_FRAME
 from sensors import md_due, rf_due
 
 
@@ -66,7 +67,13 @@ def main(threads: int = 2, n: int = 300, out: Path | None = DATA / "edge_bench.j
         # Khung xấu nhất NẾU hai mạng nặng chạy cùng khung (bản cũ: 6,7% số
         # khung; bản mới: không bao giờ — xem sensors.rf_due).
         res["worst_frame_rf_plus_md"] = _bench(lambda: (rf(iq), md(sp)), n)
+        # Khung nặng nhất có thể xảy ra khi bám nhiều mục tiêu: trần của
+        # mtt.py là 2 ảnh phổ (một batch) + 1 đoạn I/Q mỗi khung.
+        sp2 = torch.rand(MAX_SPEC_PER_FRAME, 1, 64, 128)
+        iqn = torch.randn(MAX_IQ_PER_FRAME, 2, 2048)
+        res["mtt_capped_frame_nets"] = _bench(lambda: (md(sp2), rf(iqn)), n)
     pipe = Pipeline(models)
+
     hist = [(np.random.randn(3) * 100, np.random.randn(3)) for _ in range(HIST)]
     res["blackout_full_rollout_9s"] = _bench(lambda: pipe.rollout(hist, 90), max(30, n // 10))
     res["blackout_one_extension_1s"] = _bench(

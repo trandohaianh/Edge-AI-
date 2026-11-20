@@ -187,3 +187,28 @@ class EKF:
 
     def pos_sigma(self) -> float:
         return float(np.sqrt(np.trace(self.P[:3, :3]) / 3))
+
+
+def predict_many(filters: list[EKF], dt: float) -> None:
+    """Dự đoán cho NHIỀU bộ lọc trong một phép tính numpy theo lô.
+
+    Mọi vết bám dùng chung F và (nếu cùng sigma_a) chung Q, nên x' = F x và
+    P' = F P Fᵀ + Q tính được cho cả lô bằng einsum thay vì N vòng lặp Python.
+    Kết quả trùng với gọi ``predict`` từng cái (có test).
+    """
+    if not filters:
+        return
+    F = np.eye(6)
+    F[:3, 3:] = np.eye(3) * dt
+    X = np.stack([f.x for f in filters])                    # [N,6]
+    P = np.stack([f.P for f in filters])                    # [N,6,6]
+    q = np.array([f.sigma_a ** 2 for f in filters])        # [N]
+    Q1 = np.zeros((6, 6))
+    Q1[:3, :3] = np.eye(3) * dt ** 4 / 4
+    Q1[:3, 3:] = Q1[3:, :3] = np.eye(3) * dt ** 3 / 2
+    Q1[3:, 3:] = np.eye(3) * dt ** 2
+    X = X @ F.T
+    P = np.einsum("ij,njk,lk->nil", F, P, F) + q[:, None, None] * Q1
+    for f, x, p in zip(filters, X, P):
+        f.x, f.P = x, p
+

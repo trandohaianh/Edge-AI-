@@ -120,17 +120,24 @@ KEYS = ["ospa_m", "coverage", "id_switches", "false_tracks_per_frame", "cls_acc"
         "bird_operator_frames", "lat_mean_ms", "lat_p99_ms", "lat_max_ms"]
 
 
-def scaling(models, n_frames=120, counts=(1, 3, 6, 10)):
-    """Thời gian xử lý một khung theo số mục tiêu (báo động giả 1/khung)."""
+def scaling(models, n_frames=120, counts=(1, 3, 6, 10), repeats=3):
+    """Thời gian xử lý một khung theo số mục tiêu (báo động giả 1/khung).
+
+    Mỗi mức chạy ``repeats`` lần và lấy TRUNG VỊ của từng thống kê: trên máy
+    dùng chung, một lần chạy có thể trùng lúc tiến trình khác chiếm CPU và
+    đẩy p99 lên gấp đôi; trung vị của nhiều lần bớt phụ thuộc vào may rủi đó.
+    """
     out = []
+    keys = ("lat_mean_ms", "lat_p99_ms", "lat_max_ms")
     for c in counts:
-        r = run(models, _fan(["multirotor"] * c, spread=90.0), Weather(), n_frames,
-                SEED + 900 + c, 1.0)
-        out.append({"targets": c, "lat_mean_ms": round(r["lat_mean_ms"], 3),
-                    "lat_p99_ms": round(r["lat_p99_ms"], 3),
-                    "lat_max_ms": round(r["lat_max_ms"], 3)})
-        print(f"  {c:2d} mục tiêu: trung bình {r['lat_mean_ms']:.2f} ms, "
-              f"p99 {r['lat_p99_ms']:.2f} ms", flush=True)
+        rs = [run(models, _fan(["multirotor"] * c, spread=90.0), Weather(), n_frames,
+                  SEED + 900 + c, 1.0) for _ in range(repeats)]
+        row = {"targets": c, "repeats": repeats}
+        row |= {k: round(float(np.median([r[k] for r in rs])), 3) for k in keys}
+        out.append(row)
+        print(f"  {c:2d} mục tiêu: trung bình {row['lat_mean_ms']:.2f} ms, "
+              f"p99 {row['lat_p99_ms']:.2f} ms, max {row['lat_max_ms']:.2f} ms "
+              f"(trung vị {repeats} lần)", flush=True)
     return out
 
 

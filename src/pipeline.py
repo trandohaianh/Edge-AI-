@@ -164,6 +164,8 @@ class Track:
     # quản lý vết bám nhiều mục tiêu (mtt.py); Pipeline một mục tiêu bỏ qua
     born: int = 0
     pos_seen: int = 0                              # khung cuối có số đo radar/LiDAR
+    last_md: int = -10**6                          # khung cuối chạy mạng micro-Doppler
+    last_rf: int = -10**6                          # khung cuối chạy mạng RF
     hits: deque = field(default_factory=lambda: deque(maxlen=8))
     confirmed: bool = True
 

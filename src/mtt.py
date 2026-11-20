@@ -5,12 +5,11 @@ mọi số đo trong khung là của mục tiêu đó. Ngoài thực địa thì
 về một danh sách điểm TRỘN LẪN của nhiều drone, chim và cả báo động giả, và
 không ai cho biết điểm nào của ai. Module này giải đúng bài toán đó:
 
-1. **Suy luận theo batch, chia lượt.** Chỉ vết bám ĐÃ XÁC NHẬN mới được
-   lấy chữ ký micro-Doppler / đoạn I/Q, và mỗi vết có pha riêng
-   (``(k + tid) % chu kỳ``) nên mỗi khung chỉ khoảng N/3 vết chạy mạng radar
-   và N/5 vết chạy mạng RF, gộp thành một batch mỗi loại. Bản đầu cho cả N
-   vết chạy cùng một khung và tạo đuôi thời gian xử lý hơn 150 ms với 6 mục
-   tiêu.
+1. **Suy luận theo batch, có trần mỗi khung.** Chỉ vết bám ĐÃ XÁC NHẬN mới
+   được lấy chữ ký micro-Doppler / đoạn I/Q; mỗi khung chạy tối đa 2 ảnh phổ
+   và 1 đoạn I/Q (gộp batch), ưu tiên vết chưa chắc nhãn. Lịch sử: bản đầu
+   cho cả N vết chạy cùng khung (đuôi > 150 ms với 6 mục tiêu); bản thứ hai
+   chia lượt theo pha (vẫn tăng theo N/3); bản này chặn trên hẳn.
 2. **Liên kết toàn cục (GNN).** Với từng loại cảm biến, dựng ma trận khoảng
    cách Mahalanobis giữa vết bám (đã dự đoán) và số đo, cắt bằng cổng χ² mức
    99,9% theo đúng số chiều của số đo, rồi gán một-một bằng thuật toán
@@ -41,7 +40,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from config import FRAME_DT, MD_EVERY, RF_EVERY
-from ekf import EKF
+from ekf import EKF, predict_many
 from pipeline import Pipeline, Track
 from scene import Detection, Weather
 from sensors import EOTurret
@@ -57,6 +56,8 @@ DELETE_SIGMA = 250.0                   # hoặc độ bất định vị trí qu
 MERGE_DIST = 12.0                      # hai vết cách nhau < 12 m liên tục: trùng
 MERGE_FRAMES = 5
 SPAWN_SEP = 40.0                       # trong cùng khung, số đo mới cách vết vừa sinh < 40 m thì bỏ
+MAX_SPEC_PER_FRAME = 2                 # trần số ảnh phổ micro-Doppler chạy mạng mỗi khung
+MAX_IQ_PER_FRAME = 1                   # trần số đoạn I/Q chạy mạng mỗi khung
 CAMERA_DWELL = 10                      # khung camera dừng ở mỗi vết bám
 _BIG = 1e9
 
@@ -179,8 +180,7 @@ class MultiTracker:
     def step(self, dets: list[Detection], w: Weather, k: int) -> list[dict]:
         """Xử lý một khung. Trả về bản tin của các vết bám ĐÃ XÁC NHẬN."""
         t_all = time.perf_counter()
-        for tr in self.tracks.values():
-            tr.ekf.predict(FRAME_DT)
+        predict_many([t.ekf for t in self.tracks.values()], FRAME_DT)
 
         t0 = time.perf_counter()
         assigned, free = self.associate(dets)
@@ -253,17 +253,36 @@ class MultiTracker:
         return [d for j, d in enumerate(free) if j not in taken]
 
     def _request_raw(self, assigned: dict, k: int) -> None:
-        """Xin dữ liệu thô cho các vết đã xác nhận tới lượt (xem docstring)."""
+        """Xin dữ liệu thô cho các vết đã xác nhận, CÓ TRẦN mỗi khung.
+
+        Mỗi khung chạy tối đa ``MAX_SPEC_PER_FRAME`` ảnh phổ và
+        ``MAX_IQ_PER_FRAME`` đoạn I/Q, bất kể có bao nhiêu mục tiêu. Bản chia
+        lượt theo pha (k + tid) vẫn để số mạng mỗi khung tăng theo N/3, nên với
+        6–10 mục tiêu đuôi thời gian xử lý chạm ngân sách 50 ms.
+
+        Vết nào được chạy trước: trong các vết đã "tới hạn" (đủ một chu kỳ kể
+        từ lần phân loại trước), vết CHƯA CHẮC NHÃN nhất đi trước, hoà thì vết
+        chờ lâu nhất. Vết đã chắc 99% nhường lượt — phân loại lại nó gần như
+        không thêm thông tin. Hệ quả: với nhiều mục tiêu, một vết có thể được
+        phân loại thưa hơn 0,3 s/lần; đổi lại thời gian xử lý mỗi khung bị
+        chặn trên.
+        """
         if self.raw is None:
             return
-        for tid, ds in assigned.items():
-            if not self.tracks[tid].confirmed:
-                continue
-            for d in ds:
-                if d.sensor == "radar" and (k + tid) % MD_EVERY == 0 and "spec" not in d.meta:
-                    d.meta["spec"] = self.raw(d, "spec")
-                elif d.sensor == "rf" and (k + tid) % RF_EVERY == 0 and "iq" not in d.meta:
-                    d.meta["iq"] = self.raw(d, "iq")
+        for sensor, what, period, cap, attr in (
+                ("radar", "spec", MD_EVERY, MAX_SPEC_PER_FRAME, "last_md"),
+                ("rf", "iq", RF_EVERY, MAX_IQ_PER_FRAME, "last_rf")):
+            due = []
+            for tid, ds in assigned.items():
+                tr = self.tracks[tid]
+                if not tr.confirmed or k - getattr(tr, attr) < period:
+                    continue
+                d = next((d for d in ds if d.sensor == sensor and what not in d.meta), None)
+                if d is not None:
+                    due.append((tr.fuser.state.top()[1], getattr(tr, attr), tid, d))
+            for _, _, tid, d in sorted(due, key=lambda x: (x[0], x[1], x[2]))[:cap]:
+                d.meta[what] = self.raw(d, what)
+                setattr(self.tracks[tid], attr, k)
 
     def _manage(self, k: int, msgs: dict):
         for tid in list(self.tracks):

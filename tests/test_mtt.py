@@ -137,3 +137,44 @@ def test_ospa():
     assert EM.ospa(X, X) == 0.0
     assert EM.ospa(X, X[:1]) == pytest.approx(EM.OSPA_C / 2)
     assert EM.ospa(X, np.zeros((0, 3))) == EM.OSPA_C
+
+
+def test_du_doan_ekf_theo_lo_trung_tung_cai():
+    import copy
+    from ekf import predict_many
+    rng = np.random.default_rng(3)
+    a = [EKF(rng.normal(0, 800, 3), rng.normal(0, 15, 3), sigma_a=rng.uniform(2, 9),
+             p_var=rng.uniform(1, 900)) for _ in range(9)]
+    b = copy.deepcopy(a)
+    for f in a:
+        f.predict(0.1)
+    predict_many(b, 0.1)
+    for x, y in zip(a, b):
+        np.testing.assert_allclose(x.x, y.x, rtol=0, atol=1e-12)
+        np.testing.assert_allclose(x.P, y.P, rtol=0, atol=1e-9)
+
+
+def test_tran_mang_nang_moi_khung_voi_10_muc_tieu(models):
+    """10 mục tiêu: mỗi khung không quá trần, nhưng vết nào cũng vẫn được phân loại."""
+    import mtt as MT
+    spec = EM._fan(["multirotor"] * 10, spread=90.0)
+    rng = np.random.default_rng(15)
+    w = Weather()
+    tgs = EM.build_targets(spec, 80, rng)
+    per_frame = []
+
+    class Counting(RawProvider):
+        def __call__(self, d, what):
+            per_frame[-1][what] += 1
+            return super().__call__(d, what)
+
+    mt = MultiTracker(models, raw_provider=Counting(tgs, w, rng))
+    for k in range(80):
+        per_frame.append({"spec": 0, "iq": 0})
+        mt.step(sense_all(tgs, k, w, rng, eo_az=mt.turret.az, clutter_rate=1.0, raw=False), w, k)
+        mt.point_camera(k)
+    assert max(f["spec"] for f in per_frame) <= MT.MAX_SPEC_PER_FRAME
+    assert max(f["iq"] for f in per_frame) <= MT.MAX_IQ_PER_FRAME
+    conf = [t for t in mt.tracks.values() if t.confirmed]
+    assert len(conf) == 10
+    assert all(t.last_md >= 0 for t in conf)          # vết nào cũng đã được phân loại

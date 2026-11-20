@@ -42,7 +42,6 @@ services:
       - "${EDGE_HTTPS_PORT:-443}:443/udp"   # HTTP/3
     environment:
       EDGE_DOMAIN: ${EDGE_DOMAIN:-localhost}
-      ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data                  # chứng chỉ + khoá CA nội bộ

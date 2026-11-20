@@ -212,3 +212,24 @@ def test_bo_bam_tat_dinh_nen_phat_lai_do_duoc_do_tre(models):
             ]
         )
     assert outs[0] == outs[1]
+
+
+def test_vet_non_bi_xoa_nhanh_vet_chin_duoc_cho_lau():
+    import edge_ai.tracking.mtt as MT
+
+    tr = Track(1, EKF(np.zeros(3), np.zeros(3)))
+    tr.pos_hits = 3
+    assert MultiTracker._coast_limit(tr) == MT.YOUNG_COAST
+    tr.pos_hits = MT.MATURE_HITS
+    assert MultiTracker._coast_limit(tr) == MT.DELETE_AFTER
+
+
+def test_cuu_vet_gianh_lai_so_do_tu_vet_tam(models):
+    """Hồi quy: M1, seed SEED+5003 — vết đã xác nhận trượt cổng 2 khung, vết
+    tạm sinh từ chính số đo đó được xác nhận thành bản trùng (2 lần đổi ID)."""
+    from edge_ai.config import SEED
+
+    name, spec, w, cl = EM.SCENARIOS[0]
+    r = EM.run(models, spec, w, 200, SEED + 5003, cl)
+    assert r["id_switches"] == 0
+    assert r["false_tracks_per_frame"] == 0.0

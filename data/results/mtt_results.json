@@ -22,9 +22,9 @@
     1.0
    ],
    "bird_operator_frames": 0.0,
-   "lat_mean_ms": 41.951,
-   "lat_p99_ms": 282.76,
-   "lat_max_ms": 522.125
+   "lat_mean_ms": 22.817,
+   "lat_p99_ms": 132.43,
+   "lat_max_ms": 170.445
   },
   {
    "scenario": "M2 · 2 drone bay sát nhau (cách 2°), báo động giả 1/khung",
@@ -48,9 +48,9 @@
     1.0
    ],
    "bird_operator_frames": 0.0,
-   "lat_mean_ms": 17.324,
-   "lat_p99_ms": 82.214,
-   "lat_max_ms": 176.002
+   "lat_mean_ms": 17.21,
+   "lat_p99_ms": 72.314,
+   "lat_max_ms": 134.092
   },
   {
    "scenario": "M3 · bầy 6 drone trong mưa, báo động giả 3/khung",
@@ -74,9 +74,9 @@
     1.0
    ],
    "bird_operator_frames": 0.0,
-   "lat_mean_ms": 39.436,
-   "lat_p99_ms": 342.526,
-   "lat_max_ms": 483.883
+   "lat_mean_ms": 35.531,
+   "lat_p99_ms": 186.714,
+   "lat_max_ms": 307.723
   },
   {
    "scenario": "M4 · 2 drone + 2 chim, sương mù đêm",
@@ -100,9 +100,9 @@
     1.0
    ],
    "bird_operator_frames": 0.0,
-   "lat_mean_ms": 22.524,
-   "lat_p99_ms": 124.934,
-   "lat_max_ms": 188.085
+   "lat_mean_ms": 10.559,
+   "lat_p99_ms": 26.973,
+   "lat_max_ms": 40.544
   }
  ],
  "frames": 200,
@@ -113,31 +113,43 @@
  "scaling": [
   {
    "targets": 1,
-   "repeats": 3,
-   "lat_mean_ms": 4.456,
-   "lat_p99_ms": 14.203,
-   "lat_max_ms": 19.307
+   "repeats": 5,
+   "min_mean_ms": 3.168,
+   "min_p99_ms": 9.185,
+   "min_max_ms": 9.901,
+   "raw_p99_median_ms": 10.167,
+   "frames_over_budget_min": 0,
+   "frames": 117
   },
   {
    "targets": 3,
-   "repeats": 3,
-   "lat_mean_ms": 26.131,
-   "lat_p99_ms": 65.501,
-   "lat_max_ms": 75.742
+   "repeats": 5,
+   "min_mean_ms": 9.055,
+   "min_p99_ms": 17.089,
+   "min_max_ms": 18.696,
+   "raw_p99_median_ms": 24.897,
+   "frames_over_budget_min": 0,
+   "frames": 117
   },
   {
    "targets": 6,
-   "repeats": 3,
-   "lat_mean_ms": 28.109,
-   "lat_p99_ms": 64.19,
-   "lat_max_ms": 85.337
+   "repeats": 5,
+   "min_mean_ms": 21.992,
+   "min_p99_ms": 29.1,
+   "min_max_ms": 29.892,
+   "raw_p99_median_ms": 54.035,
+   "frames_over_budget_min": 0,
+   "frames": 117
   },
   {
    "targets": 10,
-   "repeats": 3,
-   "lat_mean_ms": 39.882,
-   "lat_p99_ms": 59.751,
-   "lat_max_ms": 165.871
+   "repeats": 5,
+   "min_mean_ms": 20.156,
+   "min_p99_ms": 30.586,
+   "min_max_ms": 30.92,
+   "raw_p99_median_ms": 48.514,
+   "frames_over_budget_min": 0,
+   "frames": 117
   }
  ],
  "note": "Đo trên CPU x86 (Windows, 2 luồng torch), không phải Jetson. Dữ liệu mô phỏng."

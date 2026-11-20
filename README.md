@@ -130,7 +130,7 @@ không biến nào là bắt buộc.
 | `EDGE_AUDIT_LOG` | Tệp nhật ký, mặc định `logs/audit.jsonl`. Kiểm tra chuỗi băm: `python -m edge_ai.api.audit_log logs/audit.jsonl` (chạy trong `backend/`) |
 | `EDGE_DATA_DIR`, `EDGE_MODELS_DIR`, `EDGE_RESULTS_DIR`, `EDGE_STATIC_DIR`, `EDGE_LOG_DIR` | Ghi đè đường dẫn (mặc định tính từ gốc repo) |
 | `EDGE_ALLOW_UNTRAINED` | `1` cho phép chạy khi thiếu trọng số (chỉ để thử luồng; dashboard hiện băng cảnh báo đỏ) |
-| `EDGE_DOMAIN`, `ACME_EMAIL` | Dùng cho Caddy, xem mục dưới |
+| `EDGE_DOMAIN`, `EDGE_HTTP_PORT`, `EDGE_HTTPS_PORT` | Dùng cho Caddy, xem mục dưới |
 
 ## Triển khai có HTTPS
 

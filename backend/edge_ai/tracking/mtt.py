@@ -52,6 +52,8 @@ SENSOR_ORDER = ("lidar", "radar", "eo", "rf")
 POS_SENSORS = ("lidar", "radar")  # chỉ các cảm biến cho đủ toạ độ 3D mới sinh được vết
 CONFIRM_M, CONFIRM_N = 3, 5  # xác nhận: 3 trong 5 khung gần nhất có số đo
 TENTATIVE_MAX_AGE = 6  # vết tạm quá 6 khung chưa xác nhận thì xoá
+MATURE_HITS = 10  # vết có ít hơn chừng này lần đo vị trí là vết "non"
+YOUNG_COAST = 5  # vết non: mất số đo vị trí 0,5 s thì xoá
 DELETE_AFTER = 40  # vết đã xác nhận: mất dấu 4 s thì xoá
 DELETE_SIGMA = 250.0  # hoặc độ bất định vị trí quá 250 m
 MERGE_DIST = 12.0  # hai vết cách nhau < 12 m liên tục: trùng
@@ -207,6 +209,7 @@ class MultiTracker:
             tr.hits.append(1 if pos_hit else 0)
             if pos_hit:
                 tr.pos_seen = k
+                tr.pos_hits += 1
             m["confirmed"] = tr.confirmed
             m["operator"] = tr.operator
             m["needs_operator"] = m["needs_operator"] and tr.confirmed
@@ -222,6 +225,7 @@ class MultiTracker:
                 continue
             tr = self._spawn(d, k)
             tr.hits.append(1)
+            tr.pos_hits = 1
             born.append(p)
         self.timing["manage"].append((time.perf_counter() - t0) * 1e3)
         self.timing["total"].append((time.perf_counter() - t_all) * 1e3)
@@ -235,17 +239,35 @@ class MultiTracker:
         đo rất chính xác). Nếu cứ thế sinh vết mới thì một mục tiêu có hai vết:
         vết mới bám tiếp, vết cũ trôi theo dự đoán và thành vết giả. Ở đây số
         đo vị trí chưa ai nhận được thử lại với cổng nới rộng 4 lần, chỉ với
-        các vết ĐÃ XÁC NHẬN mà khung này chưa có số đo vị trí nào."""
+        các vết ĐÃ XÁC NHẬN mà khung này chưa có số đo vị trí nào.
+
+        Ứng viên gồm cả số đo vị trí đã rơi vào tay một vết TẠM. Bản trước chỉ
+        xét số đo thừa, nên khi vết đã xác nhận trượt cổng 2–3 khung liền, vết
+        tạm sinh ra từ chính các số đo đó nhận tiếp chúng, đủ 3/5 thì được xác
+        nhận và trở thành bản trùng (đo được: một lần ở kịch bản M1, 14 khung
+        trùng và 2 lần đổi ID). Vết đã xác nhận có lịch sử dài hơn nên được
+        ưu tiên giành lại số đo."""
         hungry = [
             self.tracks[t]
             for t, ds in assigned.items()
             if self.tracks[t].confirmed and not any(d.sensor in POS_SENSORS for d in ds)
         ]
-        if not hungry or not free:
+        if not hungry:
             return free
-        C = np.full((len(hungry), len(free)), _BIG)
+        held = [
+            (t, d)
+            for t, ds in assigned.items()
+            if not self.tracks[t].confirmed
+            for d in ds
+            if d.sensor in POS_SENSORS
+        ]
+        cand = free + [d for _, d in held]
+        if not cand:
+            return free
+        owner = {id(d): t for t, d in held}
+        C = np.full((len(hungry), len(cand)), _BIG)
         for i, tr in enumerate(hungry):
-            for j, d in enumerate(free):
+            for j, d in enumerate(cand):
                 d2 = tr.ekf.mahalanobis(d.sensor, d.z, d.R)
                 if d2 < 4.0 * CHI2_GATE[d.sensor]:
                     C[i, j] = d2
@@ -253,12 +275,14 @@ class MultiTracker:
         taken = set()
         for i, j in zip(rows, cols):
             if C[i, j] < _BIG:
-                d = free[j]
+                d = cand[j]
+                if id(d) in owner:  # lấy lại từ vết tạm
+                    assigned[owner[id(d)]].remove(d)
                 assigned[hungry[i].tid].insert(0, d)
                 d.meta["rescued"] = True
                 d.meta["gate"] = 4.0 * CHI2_GATE[d.sensor] / len(d.z) + 1.0
                 taken.add(j)
-        return [d for j, d in enumerate(free) if j not in taken]
+        return [d for j, d in enumerate(free) if j not in taken]  # free = phần đầu của cand
 
     def _request_raw(self, assigned: dict, k: int) -> None:
         """Xin dữ liệu thô cho các vết đã xác nhận, CÓ TRẦN mỗi khung.
@@ -293,6 +317,17 @@ class MultiTracker:
                 d.meta[what] = self.raw(d, what)
                 setattr(self.tracks[tid], attr, k)
 
+    @staticmethod
+    def _coast_limit(tr: Track) -> int:
+        """Số khung một vết đã xác nhận được phép thiếu số đo vị trí.
+
+        Vết "chín" (≥ MATURE_HITS lần đo vị trí) được chờ 4 s — đủ để
+        Transformer dự đoán qua quãng mất dấu. Vết mới xác nhận thì chỉ 0,5 s:
+        đo được một vết rác cách mục tiêu thật 2,2 km, sinh từ 3 báo động giả
+        tình cờ rơi vào cổng trong 5 khung, đã sống thêm 4 s chỉ vì được đối
+        xử như vết thật (kịch bản M2, 0,24 vết giả/khung ở lượt đó)."""
+        return DELETE_AFTER if tr.pos_hits >= MATURE_HITS else YOUNG_COAST
+
     def _manage(self, k: int, msgs: dict):
         for tid in list(self.tracks):
             tr = self.tracks[tid]
@@ -304,7 +339,7 @@ class MultiTracker:
                     msgs[tid]["confirmed"] = True
                 elif age >= TENTATIVE_MAX_AGE:
                     self._delete(tid)
-            elif k - tr.pos_seen > DELETE_AFTER or tr.ekf.pos_sigma() > DELETE_SIGMA:
+            elif k - tr.pos_seen > self._coast_limit(tr) or tr.ekf.pos_sigma() > DELETE_SIGMA:
                 self._delete(tid)
         # Hai vết bám đã xác nhận nằm sát nhau nhiều khung liền là một mục
         # tiêu bị bám hai lần: giữ vết già hơn.

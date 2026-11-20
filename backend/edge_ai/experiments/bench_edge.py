@@ -39,6 +39,7 @@ def _bench(fn, n: int) -> dict:
         ts.append((time.perf_counter() - t0) * 1e3)
     a = np.asarray(ts)
     return {
+        "min_ms": round(float(a.min()), 3),  # ít bị tiến trình khác chen nhất
         "mean_ms": round(float(a.mean()), 3),
         "p50_ms": round(float(np.percentile(a, 50)), 3),
         "p99_ms": round(float(np.percentile(a, 99)), 3),

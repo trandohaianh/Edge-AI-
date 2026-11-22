@@ -527,3 +527,20 @@ def test_lenh_tu_trang_web_khac_bi_tu_choi(srv):
     assert _log_lines(log) == []
     same = {"Origin": "http://testserver"}  # chính dashboard
     assert c.post("/api/scenario/bird", headers=same).status_code == 200
+
+
+def test_csp_khong_cho_chay_script_chen_vao_trang(srv):
+    """SECURITY R-3: JS nằm ở /static/app.js nên CSP không cần 'unsafe-inline'
+    cho script. Trang không được còn khối <script> viết thẳng trong HTML."""
+    import re
+
+    _, _, c, _ = srv
+    r = c.get("/")
+    csp = r.headers["Content-Security-Policy"]
+    script_src = re.search(r"script-src ([^;]*)", csp).group(1)
+    assert "unsafe-inline" not in script_src and "unsafe-eval" not in script_src
+    assert re.findall(r"<script(?![^>]*\bsrc=)[^>]*>", r.text) == []
+    assert re.search(r"\son[a-z]+\s*=", r.text) is None  # không có onclick=… trong HTML
+    js = c.get("/static/app.js")
+    assert js.status_code == 200 and "function tick" in js.text
+    assert js.headers["Cache-Control"] == "no-cache"

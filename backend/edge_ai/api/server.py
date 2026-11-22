@@ -402,14 +402,14 @@ async def security_headers(request: Request, call_next):
     resp.headers.setdefault("Referrer-Policy", "no-referrer")
     resp.headers.setdefault(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        "default-src 'self'; script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
         "connect-src 'self'; frame-ancestors 'none'",
     )
     if request.url.path.startswith("/api/"):
         resp.headers.setdefault("Cache-Control", "no-store")
-    elif request.url.path == "/":
-        # Trang dashboard phải luôn hỏi lại máy chủ: nếu không, sau khi cập
+    elif request.url.path == "/" or request.url.path.startswith("/static/"):
+        # Trang dashboard và app.js phải luôn hỏi lại máy chủ: nếu không, sau khi cập
         # nhật, trình duyệt có thể dùng bản giao diện cũ đã lưu đệm (lỗi tìm
         # thấy khi kiểm thử đầu-cuối, bước 8).
         resp.headers.setdefault("Cache-Control", "no-cache")

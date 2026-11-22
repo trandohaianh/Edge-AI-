@@ -4,14 +4,14 @@
 |---|---|
 | Sản phẩm | Hệ thống giám sát và bám quỹ đạo mục tiêu bay thấp bằng AI đa cảm biến tại thiết bị biên |
 | Loại | Khoá luận tốt nghiệp — Dự án 2 |
-| Phiên bản PRD | 1.0 — **bản nháp, chờ chủ dự án xác nhận** |
+| Phiên bản PRD | 1.1 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
 | Ngày | 22/11/2026 |
 | Trạng thái dự án | Đã lập trình xong MVP (bước 6) trước khi có PRD. PRD này được **viết bù** để làm căn cứ nghiệm thu những gì đã có và giới hạn phạm vi các bước 7–10 |
 
 > **Đọc nhanh.** Mục 1–4 nói *làm gì, cho ai*. Mục 5–6 là *danh sách tính
-> năng*. Mục 9 là *tiêu chí nghiệm thu* kèm tình trạng hiện tại. Mục 11 là
-> **những câu hỏi chỉ chủ dự án trả lời được**; các con số ở mục 7–8 đang là
-> giả định cho đến khi có câu trả lời.
+> năng*. Mục 9 là *tiêu chí nghiệm thu* kèm tình trạng hiện tại. Mục 11 ghi
+> **các quyết định** của chủ dự án; mục 7–8 và 9 đã được sửa theo các quyết
+> định đó.
 
 ---
 
@@ -108,13 +108,14 @@ Mã `F-x` dùng để đối chiếu với tiêu chí nghiệm thu ở mục 9.
 - Thao tác (xác nhận, bỏ qua, đổi kịch bản): cần **mã truy cập dùng chung**
   (`EDGE_API_TOKEN`). Khi không đặt mã thì chỉ chính máy trạm được thao tác.
 - Chưa phân biệt từng chuyên viên. Tên ca trực do người dùng tự nhập, nên
-  chưa phải bằng chứng xác thực danh tính.
+  chưa phải bằng chứng xác thực danh tính. **Đã chốt (Q-3):** một mã chung là
+  đủ cho khoá luận; tài khoản riêng để vào hướng phát triển (L-3).
 
 **Dữ liệu cần lưu:**
 
 | Dữ liệu | Ở đâu | Có tính cá nhân? | Giữ bao lâu |
 |---|---|---|---|
-| Nhật ký quyết định (thời điểm, vết bám, hành động, tên ca trực, bằng chứng) | Tệp JSONL có chuỗi băm (`logs/audit.jsonl` hoặc volume Docker) | **Có**: tên/mã ca trực | Chưa quy định (câu hỏi Q-5) |
+| Nhật ký quyết định (thời điểm, vết bám, hành động, tên ca trực, bằng chứng) | Tệp JSONL có chuỗi băm (`logs/audit.jsonl` hoặc volume Docker) | **Có**: tên/mã ca trực | **12 tháng** (Q-5) |
 | Trọng số mô hình | `data/models/` | Không | Theo phiên bản phần mềm |
 | Kết quả đo | `data/results/` | Không | Theo phiên bản phần mềm |
 
@@ -122,18 +123,25 @@ Mã `F-x` dùng để đối chiếu với tiêu chí nghiệm thu ở mục 9.
   tệp nhật ký là đủ và dễ kiểm tra.
 - Không lưu ảnh, video hay dữ liệu thô của cảm biến.
 
+**Quy định với nhật ký quyết định (đã chốt, Q-5):**
+- **Giữ 12 tháng**; quá hạn thì xoá hoặc chuyển ra lưu trữ ngoại tuyến.
+- **Chỉ kỹ thuật viên và người kiểm tra** được đọc tệp. Chuyên viên trực chỉ
+  thấy 12 quyết định gần nhất trên dashboard.
+- **Sao lưu hằng ngày**, và phải thử khôi phục được (tiêu chí A-16, A-17 —
+  hiện **chưa làm**, thuộc bước 7 và 9).
+
 ## 8. Quy mô, ngân sách, thời gian
 
-Các con số dưới đây là **giả định**, chờ xác nhận ở mục 11.
+Đã chốt theo các quyết định ở mục 11, trừ thời hạn (Q-1).
 
 | Hạng mục | Giả định hiện tại |
 |---|---|
 | Số trạm | 1 (demo khoá luận) |
 | Số người dùng đồng thời | 1–3 chuyên viên trong một ca |
-| Số mục tiêu cùng lúc | Thiết kế cho tối đa 10; bảo đảm trong ngân sách thời gian tới 3 (đã đo) |
+| Số mục tiêu cùng lúc | **Bảo đảm 3** trong 50 ms (Q-4). 10 là mục tiêu mở rộng, không bắt buộc |
 | Ngân sách | 0 đồng cho dịch vụ trả phí. Mọi thứ chạy tại chỗ; không dùng cloud hay dịch vụ AI bên ngoài |
-| Phần cứng | Jetson Orin Nano/NX (chưa có trong tay — câu hỏi Q-2) |
-| Thời hạn | Chưa rõ (câu hỏi Q-1) |
+| Phần cứng | Thiết bị đích là Jetson Orin nhưng **không có để đo** (Q-2). Kết quả thời gian lấy trên x86; khoá luận ghi rõ là chưa kiểm chứng trên thiết bị đích |
+| Thời hạn | **Chưa rõ — Q-1 còn mở** |
 
 ## 9. Tiêu chí nghiệm thu
 
@@ -145,7 +153,7 @@ nhất: *chưa làm / đã viết / đã chạy thử / đã kiểm thử đạt
 | Mã | Tiêu chí | Ngưỡng đạt | Kết quả hiện có | Tình trạng | Bằng chứng |
 |---|---|---|---|---|---|
 | A-1 | Thời gian một khung, 1 mục tiêu | p99 < 50 ms | 8,99 ms p99 (container x86); 9–19 ms khung xấu nhất (laptop có tải nền) | Đã kiểm thử đạt **trên x86**; **chưa đo trên Jetson** | `data/results/scenario_results.json`, `reports/03` mục 9.3 |
-| A-2 | Thời gian một khung, nhiều mục tiêu | Khung xấu nhất < 50 ms với số mục tiêu tối đa ở Q-4 | ≤ 3 mục tiêu: 19–28 ms. 6–10 mục tiêu: 30–53 ms tuỳ tải máy | Đạt tới 3 mục tiêu; **6–10 chưa chắc**, phải đo trên Jetson | `data/results/mtt_results.json` |
+| A-2 | Thời gian một khung, nhiều mục tiêu | **3 mục tiêu**: khung xấu nhất < 50 ms (bắt buộc, Q-4). 6–10 mục tiêu: chỉ theo dõi, không bắt buộc | 3 mục tiêu: 19–28 ms. 6–10 mục tiêu: 30–53 ms tuỳ tải máy | Đã kiểm thử đạt (x86) với phần bắt buộc | `data/results/mtt_results.json` |
 | A-3 | Phát hiện RF bằng học sâu | Độ chính xác ≥ 90% trên tập kiểm thử riêng | 96,4% / 2.800 mẫu | Đã kiểm thử đạt (mô phỏng) | `data/results/rf_metrics.json` |
 | A-4 | Phát hiện radar micro-Doppler bằng học sâu | ≥ 90% | 95,4% / 2.800 mẫu | Đã kiểm thử đạt (mô phỏng) | `data/results/md_metrics.json` |
 | A-5 | Nhận dạng đúng loại trong 7 kịch bản hiện trường (trời quang, đêm–sương mù, nhiễu RF, mưa, chim, nhãn ngụy trang, mất dấu) | ≥ 95% số khung sau giai đoạn khởi động | 100% ở cả 7 | Đã kiểm thử đạt (mô phỏng) | `scenario_results.json` |
@@ -156,33 +164,47 @@ nhất: *chưa làm / đã viết / đã chạy thử / đã kiểm thử đạt
 | A-10 | Mọi quyết định của người đều được ghi lại | Mỗi lần bấm sinh đúng 1 dòng nhật ký; còn nguyên sau khi khởi động lại; sửa/xoá dòng thì bị phát hiện | Đạt cả ba | Đã kiểm thử đạt | test `test_quyet_dinh_duoc_ghi_xuong_dia…`, `test_nhat_ky_chuoi_bam…`; thử Docker trong `reports/03` mục 10 |
 | A-11 | Không ai ngoài trạm thao tác được khi không có mã | POST từ máy khác bị từ chối (403/401) | Đạt | Đã kiểm thử đạt | test `test_khong_dat_ma…`, `test_ma_truy_cap…` |
 | A-12 | Không có chức năng tự động hành động | Không có API hay mã nào gửi lệnh ra ngoài hệ thống | Đạt (đã rà toàn bộ API: chỉ xem, xác nhận, bỏ qua, đổi kịch bản) | Đã kiểm tra | `README.md` mục API |
-| A-13 | Chạy được trên SoC 10–25 W | Khởi động được và A-1/A-2 đạt trên Jetson | Chưa có phần cứng | **Chưa làm** | — |
+| A-13 | Chạy được trên SoC 10–25 W | Khởi động được và A-1/A-2 đạt trên Jetson | Không có phần cứng | **Chưa làm — chấp nhận là giới hạn** (Q-2); phải ghi trong phần hạn chế của khoá luận | — |
 | A-14 | Dashboard dùng được trên màn hình máy tính trạm | Thao tác đủ F-10, F-11 không lỗi; báo rõ khi mất kết nối | Đạt trên Chrome máy tính | Đã chạy thử | Kiểm tra trên trình duyệt (`reports/02` mục 6) |
 | A-15 | Cài đặt lại được từ đầu | Clone repo → làm theo README → dashboard chạy, test xanh | Đạt trên Windows; Docker build đạt | Đã chạy thử | `README.md`, CI |
+| A-16 | Sao lưu và khôi phục nhật ký (Q-5) | Sao lưu tự động hằng ngày; khôi phục bản sao lưu vào hệ thống mới thì chuỗi băm vẫn hợp lệ; tự dọn bản cũ hơn 12 tháng | — | **Chưa làm** (bước 7, 9) | — |
+| A-17 | Quyền đọc nhật ký (Q-5) | Trong Docker, tệp nhật ký chỉ user của dịch vụ đọc được; có hướng dẫn cấp quyền cho kỹ thuật viên và người kiểm tra | Container đã chạy bằng user riêng (uid 10001) | Một phần | `reports/03` mục 10 |
 
 ## 10. Giả định
 
 1. Dữ liệu mô phỏng theo mô hình vật lý được chấp nhận làm bằng chứng cho
    khoá luận. Nối cảm biến thật là việc sau (L-1).
 2. Dashboard chỉ dùng trong mạng nội bộ của trạm, không mở ra Internet.
-3. Người trực dùng máy tính để bàn hoặc laptop. Không cần giao diện điện
-   thoại; tiêu chí A-14 vì vậy chỉ yêu cầu màn hình máy tính.
-4. Một mã truy cập dùng chung là đủ cho giai đoạn khoá luận.
+3. Người trực dùng máy tính để bàn hoặc laptop. **Không cần giao diện điện
+   thoại** (đã chốt, Q-6); tiêu chí A-14 vì vậy chỉ yêu cầu màn hình máy tính.
+4. Một mã truy cập dùng chung là đủ cho giai đoạn khoá luận (đã chốt, Q-3).
+5. Demo cho hội đồng chạy **tại chỗ bằng Docker**, không mở địa chỉ công khai
+   (đã chốt, Q-7).
 
-## 11. Câu hỏi mở — cần chủ dự án trả lời
+## 11. Quyết định của chủ dự án
 
-| Mã | Câu hỏi | Ảnh hưởng tới | Đề xuất của tôi |
+Ngày 22/11/2026 chủ dự án **đồng ý toàn bộ đề xuất** ở bản 1.0.
+
+| Mã | Câu hỏi | Quyết định | Áp dụng vào |
 |---|---|---|---|
-| Q-1 | Hạn nộp / bảo vệ khoá luận là khi nào? | Ưu tiên các việc ở bước 7–10 | — |
-| Q-2 | Có mượn được Jetson Orin để đo không? Nếu không, có chấp nhận kết luận chỉ dựa trên đo x86 không? | A-2, A-13 | Nếu không có Jetson: ghi rõ trong khoá luận là “chưa kiểm chứng trên thiết bị đích”, như báo cáo hiện tại đang làm |
-| Q-3 | Có cần **tài khoản riêng** cho từng chuyên viên không, hay một mã chung là đủ? | L-3, bước 7 (bảo mật) | Mã chung là đủ cho khoá luận; ghi tài khoản riêng vào hướng phát triển |
-| Q-4 | Hệ thống phải bảo đảm tối đa bao nhiêu mục tiêu cùng lúc trong 50 ms? | A-2 | 3 mục tiêu (đã đạt chắc chắn); 10 là mục tiêu mở rộng |
-| Q-5 | Nhật ký quyết định cần giữ bao lâu, và ai được xem? Tên ca trực là dữ liệu cá nhân nên cần quy định | Bước 3 (sao lưu), bước 7 (quyền riêng tư) | Giữ 12 tháng; chỉ kỹ thuật viên và thanh tra được đọc tệp; sao lưu hằng ngày |
-| Q-6 | Dashboard có cần dùng được trên điện thoại / máy tính bảng không? | Giả định 3, bước 4 và 8 | Không cần |
-| Q-7 | Có cần demo trực tuyến cho hội đồng (một địa chỉ HTTPS công khai) không? | Bước 9 | Chỉ demo tại chỗ bằng Docker; nếu cần công khai thì phải bật mã truy cập và chọn hosting |
+| Q-1 | Hạn nộp / bảo vệ khoá luận | **Còn mở**: bản 1.0 không có đề xuất cho câu này. Cần biết để sắp thứ tự các việc ở bước 7–10 | Kế hoạch |
+| Q-2 | Có Jetson để đo không? | Không có. Chấp nhận kết luận trên x86, ghi rõ là chưa kiểm chứng trên thiết bị đích | Mục 8, A-13 |
+| Q-3 | Tài khoản riêng cho từng chuyên viên? | Không. Một mã chung là đủ cho khoá luận; tài khoản riêng là hướng phát triển (L-3) | Mục 7, giả định 4 |
+| Q-4 | Bảo đảm tối đa bao nhiêu mục tiêu trong 50 ms? | **3 mục tiêu**. 10 là mục tiêu mở rộng | Mục 8, A-2 |
+| Q-5 | Giữ nhật ký bao lâu, ai được xem? | **12 tháng**; chỉ kỹ thuật viên và người kiểm tra đọc tệp; **sao lưu hằng ngày** | Mục 7, A-16, A-17 |
+| Q-6 | Cần dùng trên điện thoại không? | Không | Giả định 3, A-14 |
+| Q-7 | Cần địa chỉ demo công khai không? | Không, demo tại chỗ bằng Docker | Giả định 5 |
+
+**Hệ quả:** các quyết định này sinh thêm hai yêu cầu chưa làm, cả hai có
+nguồn từ Q-5:
+- A-16: sao lưu và khôi phục nhật ký.
+- A-17 (phần còn thiếu): quyền đọc tệp nhật ký.
+
+Đây là các việc cần làm tiếp ở bước 7 (bảo mật) và bước 9 (triển khai).
 
 ## 12. Lịch sử thay đổi
 
 | Phiên bản | Ngày | Nội dung |
 |---|---|---|
 | 1.0 | 22/11/2026 | Bản nháp đầu, viết bù sau khi đã có MVP. Tổng hợp từ đề bài (`docs/build/report.js` mục 1), `README.md` và các báo cáo `reports/01–03` |
+| 1.1 | 22/11/2026 | Chủ dự án đồng ý toàn bộ đề xuất cho Q-2…Q-7. Chốt yêu cầu: bảo đảm 3 mục tiêu, mã chung, nhật ký giữ 12 tháng và sao lưu hằng ngày, không cần giao diện điện thoại, demo tại chỗ. Thêm tiêu chí A-16, A-17. Q-1 còn mở |

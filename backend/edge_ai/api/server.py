@@ -31,6 +31,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 import numpy as np
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -433,6 +434,12 @@ def require_token(request: Request, x_api_token: str | None = Header(default=Non
       laptop vẫn bấm được ngay, nhưng đem lên trạm mà quên đặt mã thì máy
       khác trong mạng KHÔNG thể ghi quyết định hay đổi kịch bản.
     """
+    # Chống CSRF: trình duyệt luôn gửi Origin với POST từ trang web. Trang
+    # khác (vd. một trang lạ mở trên chính máy trạm) gửi lệnh tới dashboard
+    # thì Origin khác Host: từ chối. Công cụ dòng lệnh không gửi Origin.
+    origin = request.headers.get("origin")
+    if origin and urlsplit(origin).netloc != request.headers.get("host", ""):
+        raise HTTPException(403, "lệnh đến từ trang web khác, bị từ chối")
     want = os.environ.get("EDGE_API_TOKEN")
     host = request.client.host if request.client else ""
     if not want:

@@ -514,3 +514,16 @@ def test_trang_dashboard_khong_bi_luu_dem_ban_cu(srv):
     _, _, c, _ = srv
     assert c.get("/").headers["Cache-Control"] == "no-cache"
     assert c.get("/api/health").headers["Cache-Control"] == "no-store"
+
+
+def test_lenh_tu_trang_web_khac_bi_tu_choi(srv):
+    """Bước 7 (CSRF): khi chưa đặt mã, một trang lạ mở trên máy trạm không
+    được đổi kịch bản hay ghi quyết định thay người trực."""
+    _, eng, c, log = srv
+    eng._step()
+    evil = {"Origin": "http://trang-la.example"}
+    assert c.post("/api/scenario/bird", headers=evil).status_code == 403
+    assert c.post("/api/act", json={"action": "bo_qua"}, headers=evil).status_code == 403
+    assert _log_lines(log) == []
+    same = {"Origin": "http://testserver"}  # chính dashboard
+    assert c.post("/api/scenario/bird", headers=same).status_code == 200

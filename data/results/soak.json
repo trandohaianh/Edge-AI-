@@ -1,0 +1,1720 @@
+{
+ "ran_at": "2026-11-23 00:33:27",
+ "host": {
+  "python": "3.12.3",
+  "platform": "linux",
+  "cpu_count": 8
+ },
+ "duration_min": 40.0,
+ "requests_state": 4794,
+ "state_latency_ms": {
+  "p50": 6.35,
+  "p99": 53.5,
+  "max": 1804.25
+ },
+ "errors": {},
+ "decisions": {
+  "sent": 102,
+  "persisted": 102
+ },
+ "scenario_switches": 19,
+ "max_frame_age_s": 0.113,
+ "health_stalls": 0,
+ "rss_mb": {
+  "start": 409.04,
+  "end": 408.69,
+  "max": 415.02,
+  "slope_second_half_mb_per_h": -9.66
+ },
+ "audit_chain": "102 dòng hợp lệ trong 1 tệp (audit-2026-11.jsonl)",
+ "checks": {
+  "khong_dung_vong_qua_2s": true,
+  "khong_loi_5xx": true,
+  "moi_quyet_dinh_ghi_duoc": true,
+  "nhat_ky_hop_le": true,
+  "bo_nho_tang_duoi_5MB_moi_gio": true
+ },
+ "passed": true,
+ "samples": [
+  {
+   "t_s": 0.0,
+   "rss_mb": 409.04,
+   "frame_age_s": 0.005,
+   "scenario": "clear",
+   "loop_p99_ms": 15.8
+  },
+  {
+   "t_s": 10.0,
+   "rss_mb": 410.14,
+   "frame_age_s": 0.083,
+   "scenario": "clear",
+   "loop_p99_ms": 14.584
+  },
+  {
+   "t_s": 20.0,
+   "rss_mb": 410.74,
+   "frame_age_s": 0.04,
+   "scenario": "clear",
+   "loop_p99_ms": 14.47
+  },
+  {
+   "t_s": 30.0,
+   "rss_mb": 410.27,
+   "frame_age_s": 0.007,
+   "scenario": "clear",
+   "loop_p99_ms": 10.374
+  },
+  {
+   "t_s": 40.0,
+   "rss_mb": 410.75,
+   "frame_age_s": 0.033,
+   "scenario": "clear",
+   "loop_p99_ms": 9.459
+  },
+  {
+   "t_s": 50.0,
+   "rss_mb": 409.68,
+   "frame_age_s": 0.072,
+   "scenario": "clear",
+   "loop_p99_ms": 20.02
+  },
+  {
+   "t_s": 60.0,
+   "rss_mb": 410.51,
+   "frame_age_s": 0.061,
+   "scenario": "clear",
+   "loop_p99_ms": 9.509
+  },
+  {
+   "t_s": 70.0,
+   "rss_mb": 410.82,
+   "frame_age_s": 0.011,
+   "scenario": "clear",
+   "loop_p99_ms": 11.002
+  },
+  {
+   "t_s": 80.1,
+   "rss_mb": 410.76,
+   "frame_age_s": 0.01,
+   "scenario": "clear",
+   "loop_p99_ms": 12.129
+  },
+  {
+   "t_s": 90.1,
+   "rss_mb": 409.56,
+   "frame_age_s": 0.08,
+   "scenario": "clear",
+   "loop_p99_ms": 11.918
+  },
+  {
+   "t_s": 100.1,
+   "rss_mb": 410.73,
+   "frame_age_s": 0.063,
+   "scenario": "clear",
+   "loop_p99_ms": 11.918
+  },
+  {
+   "t_s": 110.1,
+   "rss_mb": 410.75,
+   "frame_age_s": 0.019,
+   "scenario": "clear",
+   "loop_p99_ms": 18.26
+  },
+  {
+   "t_s": 120.1,
+   "rss_mb": 410.89,
+   "frame_age_s": 0.018,
+   "scenario": "clear",
+   "loop_p99_ms": 19.07
+  },
+  {
+   "t_s": 130.1,
+   "rss_mb": 412.46,
+   "frame_age_s": 0.033,
+   "scenario": "swarm",
+   "loop_p99_ms": 29.323
+  },
+  {
+   "t_s": 140.1,
+   "rss_mb": 413.07,
+   "frame_age_s": 0.011,
+   "scenario": "swarm",
+   "loop_p99_ms": 33.017
+  },
+  {
+   "t_s": 150.1,
+   "rss_mb": 413.01,
+   "frame_age_s": 0.017,
+   "scenario": "swarm",
+   "loop_p99_ms": 27.368
+  },
+  {
+   "t_s": 160.1,
+   "rss_mb": 413.08,
+   "frame_age_s": 0.101,
+   "scenario": "swarm",
+   "loop_p99_ms": 30.742
+  },
+  {
+   "t_s": 170.1,
+   "rss_mb": 413.33,
+   "frame_age_s": 0.041,
+   "scenario": "swarm",
+   "loop_p99_ms": 29.611
+  },
+  {
+   "t_s": 180.1,
+   "rss_mb": 413.27,
+   "frame_age_s": 0.024,
+   "scenario": "swarm",
+   "loop_p99_ms": 26.451
+  },
+  {
+   "t_s": 190.1,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.02,
+   "scenario": "swarm",
+   "loop_p99_ms": 26.451
+  },
+  {
+   "t_s": 200.1,
+   "rss_mb": 411.78,
+   "frame_age_s": 0.004,
+   "scenario": "swarm",
+   "loop_p99_ms": 19.022
+  },
+  {
+   "t_s": 210.1,
+   "rss_mb": 413.41,
+   "frame_age_s": 0.071,
+   "scenario": "swarm",
+   "loop_p99_ms": 19.961
+  },
+  {
+   "t_s": 220.1,
+   "rss_mb": 413.68,
+   "frame_age_s": 0.063,
+   "scenario": "swarm",
+   "loop_p99_ms": 23.681
+  },
+  {
+   "t_s": 230.1,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.008,
+   "scenario": "swarm",
+   "loop_p99_ms": 23.935
+  },
+  {
+   "t_s": 240.1,
+   "rss_mb": 413.82,
+   "frame_age_s": 0.04,
+   "scenario": "swarm",
+   "loop_p99_ms": 24.674
+  },
+  {
+   "t_s": 250.1,
+   "rss_mb": 413.6,
+   "frame_age_s": 0.006,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.13
+  },
+  {
+   "t_s": 260.1,
+   "rss_mb": 413.32,
+   "frame_age_s": 0.008,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.08
+  },
+  {
+   "t_s": 270.2,
+   "rss_mb": 413.78,
+   "frame_age_s": 0.072,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.627
+  },
+  {
+   "t_s": 280.2,
+   "rss_mb": 413.78,
+   "frame_age_s": 0.055,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.353
+  },
+  {
+   "t_s": 290.2,
+   "rss_mb": 413.6,
+   "frame_age_s": 0.007,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.737
+  },
+  {
+   "t_s": 300.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.008,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.137
+  },
+  {
+   "t_s": 310.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.083,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.451
+  },
+  {
+   "t_s": 320.2,
+   "rss_mb": 413.82,
+   "frame_age_s": 0.075,
+   "scenario": "fog_night",
+   "loop_p99_ms": 6.184
+  },
+  {
+   "t_s": 330.2,
+   "rss_mb": 414.06,
+   "frame_age_s": 0.011,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.056
+  },
+  {
+   "t_s": 340.2,
+   "rss_mb": 413.79,
+   "frame_age_s": 0.023,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.067
+  },
+  {
+   "t_s": 350.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.007,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.803
+  },
+  {
+   "t_s": 360.2,
+   "rss_mb": 413.8,
+   "frame_age_s": 0.06,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.83
+  },
+  {
+   "t_s": 370.2,
+   "rss_mb": 414.07,
+   "frame_age_s": 0.014,
+   "scenario": "jamming",
+   "loop_p99_ms": 7.792
+  },
+  {
+   "t_s": 380.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.027,
+   "scenario": "jamming",
+   "loop_p99_ms": 7.714
+  },
+  {
+   "t_s": 390.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.08,
+   "scenario": "jamming",
+   "loop_p99_ms": 5.482
+  },
+  {
+   "t_s": 400.2,
+   "rss_mb": 413.82,
+   "frame_age_s": 0.064,
+   "scenario": "jamming",
+   "loop_p99_ms": 8.126
+  },
+  {
+   "t_s": 410.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.015,
+   "scenario": "jamming",
+   "loop_p99_ms": 8.189
+  },
+  {
+   "t_s": 420.2,
+   "rss_mb": 413.71,
+   "frame_age_s": 0.012,
+   "scenario": "jamming",
+   "loop_p99_ms": 8.705
+  },
+  {
+   "t_s": 430.2,
+   "rss_mb": 413.87,
+   "frame_age_s": 0.098,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.262
+  },
+  {
+   "t_s": 440.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.085,
+   "scenario": "jamming",
+   "loop_p99_ms": 6.777
+  },
+  {
+   "t_s": 450.2,
+   "rss_mb": 413.79,
+   "frame_age_s": 0.035,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.908
+  },
+  {
+   "t_s": 460.2,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.055,
+   "scenario": "jamming",
+   "loop_p99_ms": 7.821
+  },
+  {
+   "t_s": 470.3,
+   "rss_mb": 414.04,
+   "frame_age_s": 0.038,
+   "scenario": "jamming",
+   "loop_p99_ms": 7.263
+  },
+  {
+   "t_s": 480.3,
+   "rss_mb": 414.94,
+   "frame_age_s": 0.008,
+   "scenario": "jamming",
+   "loop_p99_ms": 6.797
+  },
+  {
+   "t_s": 490.3,
+   "rss_mb": 413.79,
+   "frame_age_s": 0.089,
+   "scenario": "bird",
+   "loop_p99_ms": 6.942
+  },
+  {
+   "t_s": 500.3,
+   "rss_mb": 413.89,
+   "frame_age_s": 0.065,
+   "scenario": "bird",
+   "loop_p99_ms": 7.562
+  },
+  {
+   "t_s": 510.3,
+   "rss_mb": 412.95,
+   "frame_age_s": 0.041,
+   "scenario": "bird",
+   "loop_p99_ms": 10.919
+  },
+  {
+   "t_s": 520.3,
+   "rss_mb": 414.34,
+   "frame_age_s": 0.021,
+   "scenario": "bird",
+   "loop_p99_ms": 7.028
+  },
+  {
+   "t_s": 530.3,
+   "rss_mb": 412.9,
+   "frame_age_s": 0.102,
+   "scenario": "bird",
+   "loop_p99_ms": 9.089
+  },
+  {
+   "t_s": 540.3,
+   "rss_mb": 414.26,
+   "frame_age_s": 0.06,
+   "scenario": "bird",
+   "loop_p99_ms": 6.63
+  },
+  {
+   "t_s": 550.3,
+   "rss_mb": 413.95,
+   "frame_age_s": 0.037,
+   "scenario": "bird",
+   "loop_p99_ms": 6.033
+  },
+  {
+   "t_s": 560.3,
+   "rss_mb": 413.95,
+   "frame_age_s": 0.018,
+   "scenario": "bird",
+   "loop_p99_ms": 7.739
+  },
+  {
+   "t_s": 570.3,
+   "rss_mb": 413.95,
+   "frame_age_s": 0.08,
+   "scenario": "bird",
+   "loop_p99_ms": 8.702
+  },
+  {
+   "t_s": 580.3,
+   "rss_mb": 413.95,
+   "frame_age_s": 0.057,
+   "scenario": "bird",
+   "loop_p99_ms": 8.313
+  },
+  {
+   "t_s": 590.3,
+   "rss_mb": 413.14,
+   "frame_age_s": 0.038,
+   "scenario": "bird",
+   "loop_p99_ms": 6.348
+  },
+  {
+   "t_s": 600.4,
+   "rss_mb": 413.14,
+   "frame_age_s": 0.009,
+   "scenario": "bird",
+   "loop_p99_ms": 7.338
+  },
+  {
+   "t_s": 610.4,
+   "rss_mb": 414.07,
+   "frame_age_s": 0.082,
+   "scenario": "patch",
+   "loop_p99_ms": 6.955
+  },
+  {
+   "t_s": 620.4,
+   "rss_mb": 414.07,
+   "frame_age_s": 0.067,
+   "scenario": "patch",
+   "loop_p99_ms": 7.402
+  },
+  {
+   "t_s": 630.4,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.03,
+   "scenario": "patch",
+   "loop_p99_ms": 7.321
+  },
+  {
+   "t_s": 640.4,
+   "rss_mb": 412.44,
+   "frame_age_s": 0.094,
+   "scenario": "patch",
+   "loop_p99_ms": 6.277
+  },
+  {
+   "t_s": 650.4,
+   "rss_mb": 413.8,
+   "frame_age_s": 0.081,
+   "scenario": "patch",
+   "loop_p99_ms": 6.223
+  },
+  {
+   "t_s": 660.4,
+   "rss_mb": 414.02,
+   "frame_age_s": 0.032,
+   "scenario": "patch",
+   "loop_p99_ms": 5.176
+  },
+  {
+   "t_s": 670.4,
+   "rss_mb": 415.02,
+   "frame_age_s": 0.028,
+   "scenario": "patch",
+   "loop_p99_ms": 5.841
+  },
+  {
+   "t_s": 680.4,
+   "rss_mb": 412.62,
+   "frame_age_s": 0.016,
+   "scenario": "patch",
+   "loop_p99_ms": 6.889
+  },
+  {
+   "t_s": 690.5,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.093,
+   "scenario": "patch",
+   "loop_p99_ms": 6.989
+  },
+  {
+   "t_s": 700.5,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.042,
+   "scenario": "patch",
+   "loop_p99_ms": 7.039
+  },
+  {
+   "t_s": 710.5,
+   "rss_mb": 414.05,
+   "frame_age_s": 0.051,
+   "scenario": "patch",
+   "loop_p99_ms": 5.267
+  },
+  {
+   "t_s": 720.5,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.027,
+   "scenario": "patch",
+   "loop_p99_ms": 5.325
+  },
+  {
+   "t_s": 730.5,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.102,
+   "scenario": "dropout",
+   "loop_p99_ms": 5.78
+  },
+  {
+   "t_s": 740.5,
+   "rss_mb": 413.88,
+   "frame_age_s": 0.057,
+   "scenario": "dropout",
+   "loop_p99_ms": 5.78
+  },
+  {
+   "t_s": 750.5,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.047,
+   "scenario": "dropout",
+   "loop_p99_ms": 8.921
+  },
+  {
+   "t_s": 760.5,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.025,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.299
+  },
+  {
+   "t_s": 770.5,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.009,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.299
+  },
+  {
+   "t_s": 780.6,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.058,
+   "scenario": "dropout",
+   "loop_p99_ms": 5.81
+  },
+  {
+   "t_s": 790.6,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.059,
+   "scenario": "dropout",
+   "loop_p99_ms": 5.509
+  },
+  {
+   "t_s": 800.6,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.045,
+   "scenario": "dropout",
+   "loop_p99_ms": 6.7
+  },
+  {
+   "t_s": 810.6,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.011,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.467
+  },
+  {
+   "t_s": 820.6,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.055,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.506
+  },
+  {
+   "t_s": 830.6,
+   "rss_mb": 413.8,
+   "frame_age_s": 0.067,
+   "scenario": "dropout",
+   "loop_p99_ms": 5.412
+  },
+  {
+   "t_s": 840.6,
+   "rss_mb": 413.82,
+   "frame_age_s": 0.038,
+   "scenario": "dropout",
+   "loop_p99_ms": 6.702
+  },
+  {
+   "t_s": 850.6,
+   "rss_mb": 413.89,
+   "frame_age_s": 0.006,
+   "scenario": "clear",
+   "loop_p99_ms": 6.684
+  },
+  {
+   "t_s": 860.6,
+   "rss_mb": 413.89,
+   "frame_age_s": 0.061,
+   "scenario": "clear",
+   "loop_p99_ms": 6.684
+  },
+  {
+   "t_s": 870.6,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.065,
+   "scenario": "clear",
+   "loop_p99_ms": 6.237
+  },
+  {
+   "t_s": 880.7,
+   "rss_mb": 412.61,
+   "frame_age_s": 0.048,
+   "scenario": "clear",
+   "loop_p99_ms": 6.499
+  },
+  {
+   "t_s": 890.7,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.007,
+   "scenario": "clear",
+   "loop_p99_ms": 6.516
+  },
+  {
+   "t_s": 900.7,
+   "rss_mb": 413.78,
+   "frame_age_s": 0.078,
+   "scenario": "clear",
+   "loop_p99_ms": 5.266
+  },
+  {
+   "t_s": 910.7,
+   "rss_mb": 413.71,
+   "frame_age_s": 0.074,
+   "scenario": "clear",
+   "loop_p99_ms": 6.424
+  },
+  {
+   "t_s": 920.7,
+   "rss_mb": 413.69,
+   "frame_age_s": 0.059,
+   "scenario": "clear",
+   "loop_p99_ms": 5.21
+  },
+  {
+   "t_s": 930.7,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.005,
+   "scenario": "clear",
+   "loop_p99_ms": 6.98
+  },
+  {
+   "t_s": 940.7,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.07,
+   "scenario": "clear",
+   "loop_p99_ms": 6.588
+  },
+  {
+   "t_s": 950.7,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.079,
+   "scenario": "clear",
+   "loop_p99_ms": 6.147
+  },
+  {
+   "t_s": 960.7,
+   "rss_mb": 413.61,
+   "frame_age_s": 0.05,
+   "scenario": "clear",
+   "loop_p99_ms": 7.077
+  },
+  {
+   "t_s": 970.7,
+   "rss_mb": 413.55,
+   "frame_age_s": 0.013,
+   "scenario": "swarm",
+   "loop_p99_ms": 18.133
+  },
+  {
+   "t_s": 980.7,
+   "rss_mb": 413.92,
+   "frame_age_s": 0.009,
+   "scenario": "swarm",
+   "loop_p99_ms": 18.133
+  },
+  {
+   "t_s": 990.8,
+   "rss_mb": 413.86,
+   "frame_age_s": 0.029,
+   "scenario": "swarm",
+   "loop_p99_ms": 16.49
+  },
+  {
+   "t_s": 1000.8,
+   "rss_mb": 413.96,
+   "frame_age_s": 0.013,
+   "scenario": "swarm",
+   "loop_p99_ms": 17.41
+  },
+  {
+   "t_s": 1010.8,
+   "rss_mb": 413.98,
+   "frame_age_s": 0.012,
+   "scenario": "swarm",
+   "loop_p99_ms": 18.348
+  },
+  {
+   "t_s": 1020.8,
+   "rss_mb": 413.93,
+   "frame_age_s": 0.007,
+   "scenario": "swarm",
+   "loop_p99_ms": 14.741
+  },
+  {
+   "t_s": 1030.8,
+   "rss_mb": 414.05,
+   "frame_age_s": 0.06,
+   "scenario": "swarm",
+   "loop_p99_ms": 17.965
+  },
+  {
+   "t_s": 1040.8,
+   "rss_mb": 414.04,
+   "frame_age_s": 0.015,
+   "scenario": "swarm",
+   "loop_p99_ms": 17.105
+  },
+  {
+   "t_s": 1050.8,
+   "rss_mb": 414.04,
+   "frame_age_s": 0.033,
+   "scenario": "swarm",
+   "loop_p99_ms": 19.113
+  },
+  {
+   "t_s": 1060.8,
+   "rss_mb": 413.88,
+   "frame_age_s": 0.073,
+   "scenario": "swarm",
+   "loop_p99_ms": 21.954
+  },
+  {
+   "t_s": 1070.8,
+   "rss_mb": 413.87,
+   "frame_age_s": 0.023,
+   "scenario": "swarm",
+   "loop_p99_ms": 17.999
+  },
+  {
+   "t_s": 1080.8,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.017,
+   "scenario": "swarm",
+   "loop_p99_ms": 17.999
+  },
+  {
+   "t_s": 1090.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.008,
+   "scenario": "fog_night",
+   "loop_p99_ms": 5.736
+  },
+  {
+   "t_s": 1100.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.002,
+   "scenario": "fog_night",
+   "loop_p99_ms": 5.731
+  },
+  {
+   "t_s": 1110.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.093,
+   "scenario": "fog_night",
+   "loop_p99_ms": 10.155
+  },
+  {
+   "t_s": 1120.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.076,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.871
+  },
+  {
+   "t_s": 1130.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.019,
+   "scenario": "fog_night",
+   "loop_p99_ms": 6.551
+  },
+  {
+   "t_s": 1140.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.056,
+   "scenario": "fog_night",
+   "loop_p99_ms": 6.737
+  },
+  {
+   "t_s": 1150.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.071,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.353
+  },
+  {
+   "t_s": 1160.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.059,
+   "scenario": "fog_night",
+   "loop_p99_ms": 5.453
+  },
+  {
+   "t_s": 1170.9,
+   "rss_mb": 414.16,
+   "frame_age_s": 0.008,
+   "scenario": "fog_night",
+   "loop_p99_ms": 27.03
+  },
+  {
+   "t_s": 1181.2,
+   "rss_mb": 414.12,
+   "frame_age_s": 0.017,
+   "scenario": "fog_night",
+   "loop_p99_ms": 29.866
+  },
+  {
+   "t_s": 1191.2,
+   "rss_mb": 413.94,
+   "frame_age_s": 0.087,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.703
+  },
+  {
+   "t_s": 1201.3,
+   "rss_mb": 413.94,
+   "frame_age_s": 0.007,
+   "scenario": "fog_night",
+   "loop_p99_ms": 14.311
+  },
+  {
+   "t_s": 1211.3,
+   "rss_mb": 413.94,
+   "frame_age_s": 0.021,
+   "scenario": "jamming",
+   "loop_p99_ms": 11.571
+  },
+  {
+   "t_s": 1221.3,
+   "rss_mb": 414.12,
+   "frame_age_s": 0.113,
+   "scenario": "jamming",
+   "loop_p99_ms": 11.802
+  },
+  {
+   "t_s": 1231.3,
+   "rss_mb": 414.11,
+   "frame_age_s": 0.039,
+   "scenario": "jamming",
+   "loop_p99_ms": 14.655
+  },
+  {
+   "t_s": 1241.3,
+   "rss_mb": 414.11,
+   "frame_age_s": 0.046,
+   "scenario": "jamming",
+   "loop_p99_ms": 13.734
+  },
+  {
+   "t_s": 1251.3,
+   "rss_mb": 412.86,
+   "frame_age_s": 0.032,
+   "scenario": "jamming",
+   "loop_p99_ms": 10.773
+  },
+  {
+   "t_s": 1261.3,
+   "rss_mb": 414.34,
+   "frame_age_s": 0.006,
+   "scenario": "jamming",
+   "loop_p99_ms": 16.365
+  },
+  {
+   "t_s": 1271.3,
+   "rss_mb": 414.47,
+   "frame_age_s": 0.086,
+   "scenario": "jamming",
+   "loop_p99_ms": 11.175
+  },
+  {
+   "t_s": 1281.3,
+   "rss_mb": 413.94,
+   "frame_age_s": 0.068,
+   "scenario": "jamming",
+   "loop_p99_ms": 7.889
+  },
+  {
+   "t_s": 1291.4,
+   "rss_mb": 414.12,
+   "frame_age_s": 0.084,
+   "scenario": "jamming",
+   "loop_p99_ms": 11.466
+  },
+  {
+   "t_s": 1301.4,
+   "rss_mb": 414.12,
+   "frame_age_s": 0.066,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.611
+  },
+  {
+   "t_s": 1311.4,
+   "rss_mb": 413.03,
+   "frame_age_s": 0.02,
+   "scenario": "jamming",
+   "loop_p99_ms": 8.248
+  },
+  {
+   "t_s": 1321.4,
+   "rss_mb": 413.38,
+   "frame_age_s": 0.028,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.698
+  },
+  {
+   "t_s": 1331.5,
+   "rss_mb": 413.94,
+   "frame_age_s": 0.008,
+   "scenario": "bird",
+   "loop_p99_ms": 9.297
+  },
+  {
+   "t_s": 1341.5,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.073,
+   "scenario": "bird",
+   "loop_p99_ms": 9.262
+  },
+  {
+   "t_s": 1351.5,
+   "rss_mb": 408.75,
+   "frame_age_s": 0.056,
+   "scenario": "bird",
+   "loop_p99_ms": 6.363
+  },
+  {
+   "t_s": 1361.5,
+   "rss_mb": 408.66,
+   "frame_age_s": 0.046,
+   "scenario": "bird",
+   "loop_p99_ms": 7.909
+  },
+  {
+   "t_s": 1371.5,
+   "rss_mb": 408.47,
+   "frame_age_s": 0.014,
+   "scenario": "bird",
+   "loop_p99_ms": 8.053
+  },
+  {
+   "t_s": 1381.5,
+   "rss_mb": 408.75,
+   "frame_age_s": 0.093,
+   "scenario": "bird",
+   "loop_p99_ms": 8.652
+  },
+  {
+   "t_s": 1391.5,
+   "rss_mb": 408.88,
+   "frame_age_s": 0.076,
+   "scenario": "bird",
+   "loop_p99_ms": 7.187
+  },
+  {
+   "t_s": 1401.5,
+   "rss_mb": 408.66,
+   "frame_age_s": 0.057,
+   "scenario": "bird",
+   "loop_p99_ms": 5.336
+  },
+  {
+   "t_s": 1411.5,
+   "rss_mb": 408.66,
+   "frame_age_s": 0.023,
+   "scenario": "bird",
+   "loop_p99_ms": 6.687
+  },
+  {
+   "t_s": 1421.5,
+   "rss_mb": 408.66,
+   "frame_age_s": 0.086,
+   "scenario": "bird",
+   "loop_p99_ms": 6.741
+  },
+  {
+   "t_s": 1431.5,
+   "rss_mb": 409.13,
+   "frame_age_s": 0.077,
+   "scenario": "bird",
+   "loop_p99_ms": 4.531
+  },
+  {
+   "t_s": 1441.5,
+   "rss_mb": 409.13,
+   "frame_age_s": 0.052,
+   "scenario": "bird",
+   "loop_p99_ms": 5.478
+  },
+  {
+   "t_s": 1451.5,
+   "rss_mb": 409.25,
+   "frame_age_s": 0.056,
+   "scenario": "patch",
+   "loop_p99_ms": 7.289
+  },
+  {
+   "t_s": 1461.5,
+   "rss_mb": 409.25,
+   "frame_age_s": 0.041,
+   "scenario": "patch",
+   "loop_p99_ms": 8.127
+  },
+  {
+   "t_s": 1471.5,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.004,
+   "scenario": "patch",
+   "loop_p99_ms": 8.746
+  },
+  {
+   "t_s": 1481.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.061,
+   "scenario": "patch",
+   "loop_p99_ms": 8.718
+  },
+  {
+   "t_s": 1491.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.076,
+   "scenario": "patch",
+   "loop_p99_ms": 7.992
+  },
+  {
+   "t_s": 1501.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.039,
+   "scenario": "patch",
+   "loop_p99_ms": 8.255
+  },
+  {
+   "t_s": 1511.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.006,
+   "scenario": "patch",
+   "loop_p99_ms": 9.233
+  },
+  {
+   "t_s": 1521.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.005,
+   "scenario": "patch",
+   "loop_p99_ms": 4.816
+  },
+  {
+   "t_s": 1531.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.08,
+   "scenario": "patch",
+   "loop_p99_ms": 7.251
+  },
+  {
+   "t_s": 1541.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.064,
+   "scenario": "patch",
+   "loop_p99_ms": 7.654
+  },
+  {
+   "t_s": 1551.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.013,
+   "scenario": "patch",
+   "loop_p99_ms": 7.611
+  },
+  {
+   "t_s": 1561.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.004,
+   "scenario": "patch",
+   "loop_p99_ms": 7.617
+  },
+  {
+   "t_s": 1571.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.079,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.405
+  },
+  {
+   "t_s": 1581.6,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.034,
+   "scenario": "dropout",
+   "loop_p99_ms": 8.476
+  },
+  {
+   "t_s": 1591.6,
+   "rss_mb": 408.72,
+   "frame_age_s": 0.033,
+   "scenario": "dropout",
+   "loop_p99_ms": 8.643
+  },
+  {
+   "t_s": 1601.6,
+   "rss_mb": 408.72,
+   "frame_age_s": 0.015,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.716
+  },
+  {
+   "t_s": 1611.6,
+   "rss_mb": 408.82,
+   "frame_age_s": 0.091,
+   "scenario": "dropout",
+   "loop_p99_ms": 8.803
+  },
+  {
+   "t_s": 1621.7,
+   "rss_mb": 408.82,
+   "frame_age_s": 0.027,
+   "scenario": "dropout",
+   "loop_p99_ms": 6.572
+  },
+  {
+   "t_s": 1631.7,
+   "rss_mb": 408.7,
+   "frame_age_s": 0.028,
+   "scenario": "dropout",
+   "loop_p99_ms": 7.212
+  },
+  {
+   "t_s": 1641.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.014,
+   "scenario": "dropout",
+   "loop_p99_ms": 8.999
+  },
+  {
+   "t_s": 1651.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.086,
+   "scenario": "dropout",
+   "loop_p99_ms": 9.233
+  },
+  {
+   "t_s": 1661.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.04,
+   "scenario": "dropout",
+   "loop_p99_ms": 8.344
+  },
+  {
+   "t_s": 1671.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.048,
+   "scenario": "dropout",
+   "loop_p99_ms": 6.12
+  },
+  {
+   "t_s": 1681.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.022,
+   "scenario": "dropout",
+   "loop_p99_ms": 6.474
+  },
+  {
+   "t_s": 1691.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.093,
+   "scenario": "clear",
+   "loop_p99_ms": 9.459
+  },
+  {
+   "t_s": 1701.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.044,
+   "scenario": "clear",
+   "loop_p99_ms": 7.741
+  },
+  {
+   "t_s": 1711.7,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.045,
+   "scenario": "clear",
+   "loop_p99_ms": 10.618
+  },
+  {
+   "t_s": 1721.8,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.026,
+   "scenario": "clear",
+   "loop_p99_ms": 9.366
+  },
+  {
+   "t_s": 1731.8,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.008,
+   "scenario": "clear",
+   "loop_p99_ms": 8.499
+  },
+  {
+   "t_s": 1741.8,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.065,
+   "scenario": "clear",
+   "loop_p99_ms": 7.797
+  },
+  {
+   "t_s": 1751.8,
+   "rss_mb": 408.6,
+   "frame_age_s": 0.039,
+   "scenario": "clear",
+   "loop_p99_ms": 8.395
+  },
+  {
+   "t_s": 1761.8,
+   "rss_mb": 408.79,
+   "frame_age_s": 0.032,
+   "scenario": "clear",
+   "loop_p99_ms": 7.841
+  },
+  {
+   "t_s": 1771.8,
+   "rss_mb": 408.79,
+   "frame_age_s": 0.083,
+   "scenario": "clear",
+   "loop_p99_ms": 7.65
+  },
+  {
+   "t_s": 1781.8,
+   "rss_mb": 408.79,
+   "frame_age_s": 0.07,
+   "scenario": "clear",
+   "loop_p99_ms": 7.692
+  },
+  {
+   "t_s": 1791.8,
+   "rss_mb": 408.79,
+   "frame_age_s": 0.055,
+   "scenario": "clear",
+   "loop_p99_ms": 8.051
+  },
+  {
+   "t_s": 1801.8,
+   "rss_mb": 408.79,
+   "frame_age_s": 0.008,
+   "scenario": "clear",
+   "loop_p99_ms": 7.689
+  },
+  {
+   "t_s": 1811.8,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.048,
+   "scenario": "swarm",
+   "loop_p99_ms": 23.16
+  },
+  {
+   "t_s": 1821.8,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.031,
+   "scenario": "swarm",
+   "loop_p99_ms": 27.451
+  },
+  {
+   "t_s": 1831.8,
+   "rss_mb": 406.7,
+   "frame_age_s": 0.007,
+   "scenario": "swarm",
+   "loop_p99_ms": 20.006
+  },
+  {
+   "t_s": 1841.8,
+   "rss_mb": 408.75,
+   "frame_age_s": 0.051,
+   "scenario": "swarm",
+   "loop_p99_ms": 24.402
+  },
+  {
+   "t_s": 1851.8,
+   "rss_mb": 408.76,
+   "frame_age_s": 0.048,
+   "scenario": "swarm",
+   "loop_p99_ms": 24.402
+  },
+  {
+   "t_s": 1861.9,
+   "rss_mb": 408.4,
+   "frame_age_s": 0.007,
+   "scenario": "swarm",
+   "loop_p99_ms": 32.005
+  },
+  {
+   "t_s": 1871.9,
+   "rss_mb": 406.9,
+   "frame_age_s": 0.01,
+   "scenario": "swarm",
+   "loop_p99_ms": 33.329
+  },
+  {
+   "t_s": 1881.9,
+   "rss_mb": 408.61,
+   "frame_age_s": 0.008,
+   "scenario": "swarm",
+   "loop_p99_ms": 24.795
+  },
+  {
+   "t_s": 1891.9,
+   "rss_mb": 408.56,
+   "frame_age_s": 0.054,
+   "scenario": "swarm",
+   "loop_p99_ms": 25.877
+  },
+  {
+   "t_s": 1901.9,
+   "rss_mb": 408.62,
+   "frame_age_s": 0.017,
+   "scenario": "swarm",
+   "loop_p99_ms": 25.209
+  },
+  {
+   "t_s": 1911.9,
+   "rss_mb": 408.65,
+   "frame_age_s": 0.018,
+   "scenario": "swarm",
+   "loop_p99_ms": 17.941
+  },
+  {
+   "t_s": 1921.9,
+   "rss_mb": 408.56,
+   "frame_age_s": 0.063,
+   "scenario": "swarm",
+   "loop_p99_ms": 22.026
+  },
+  {
+   "t_s": 1931.9,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.079,
+   "scenario": "fog_night",
+   "loop_p99_ms": 5.58
+  },
+  {
+   "t_s": 1941.9,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.028,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.135
+  },
+  {
+   "t_s": 1951.9,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.017,
+   "scenario": "fog_night",
+   "loop_p99_ms": 12.281
+  },
+  {
+   "t_s": 1961.9,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.094,
+   "scenario": "fog_night",
+   "loop_p99_ms": 11.196
+  },
+  {
+   "t_s": 1971.9,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.077,
+   "scenario": "fog_night",
+   "loop_p99_ms": 9.888
+  },
+  {
+   "t_s": 1981.9,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.007,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.759
+  },
+  {
+   "t_s": 1992.0,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.019,
+   "scenario": "fog_night",
+   "loop_p99_ms": 8.076
+  },
+  {
+   "t_s": 2002.0,
+   "rss_mb": 408.65,
+   "frame_age_s": 0.092,
+   "scenario": "fog_night",
+   "loop_p99_ms": 4.773
+  },
+  {
+   "t_s": 2012.0,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.065,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.39
+  },
+  {
+   "t_s": 2022.0,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.016,
+   "scenario": "fog_night",
+   "loop_p99_ms": 7.39
+  },
+  {
+   "t_s": 2032.0,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.031,
+   "scenario": "fog_night",
+   "loop_p99_ms": 6.626
+  },
+  {
+   "t_s": 2042.0,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.094,
+   "scenario": "fog_night",
+   "loop_p99_ms": 6.097
+  },
+  {
+   "t_s": 2052.0,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.078,
+   "scenario": "jamming",
+   "loop_p99_ms": 5.363
+  },
+  {
+   "t_s": 2062.0,
+   "rss_mb": 408.56,
+   "frame_age_s": 0.025,
+   "scenario": "jamming",
+   "loop_p99_ms": 5.77
+  },
+  {
+   "t_s": 2072.0,
+   "rss_mb": 408.84,
+   "frame_age_s": 0.03,
+   "scenario": "jamming",
+   "loop_p99_ms": 12.478
+  },
+  {
+   "t_s": 2082.0,
+   "rss_mb": 407.64,
+   "frame_age_s": 0.013,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.9
+  },
+  {
+   "t_s": 2092.0,
+   "rss_mb": 408.86,
+   "frame_age_s": 0.095,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.905
+  },
+  {
+   "t_s": 2102.1,
+   "rss_mb": 408.83,
+   "frame_age_s": 0.048,
+   "scenario": "jamming",
+   "loop_p99_ms": 5.805
+  },
+  {
+   "t_s": 2112.1,
+   "rss_mb": 409.33,
+   "frame_age_s": 0.053,
+   "scenario": "jamming",
+   "loop_p99_ms": 6.103
+  },
+  {
+   "t_s": 2122.1,
+   "rss_mb": 408.56,
+   "frame_age_s": 0.038,
+   "scenario": "jamming",
+   "loop_p99_ms": 6.919
+  },
+  {
+   "t_s": 2132.1,
+   "rss_mb": 408.44,
+   "frame_age_s": 0.101,
+   "scenario": "jamming",
+   "loop_p99_ms": 6.067
+  },
+  {
+   "t_s": 2142.1,
+   "rss_mb": 408.56,
+   "frame_age_s": 0.055,
+   "scenario": "jamming",
+   "loop_p99_ms": 7.431
+  },
+  {
+   "t_s": 2152.1,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.067,
+   "scenario": "jamming",
+   "loop_p99_ms": 6.475
+  },
+  {
+   "t_s": 2162.1,
+   "rss_mb": 408.96,
+   "frame_age_s": 0.051,
+   "scenario": "jamming",
+   "loop_p99_ms": 9.954
+  },
+  {
+   "t_s": 2172.1,
+   "rss_mb": 408.78,
+   "frame_age_s": 0.02,
+   "scenario": "bird",
+   "loop_p99_ms": 7.082
+  },
+  {
+   "t_s": 2182.1,
+   "rss_mb": 408.94,
+   "frame_age_s": 0.014,
+   "scenario": "bird",
+   "loop_p99_ms": 8.457
+  },
+  {
+   "t_s": 2192.1,
+   "rss_mb": 408.94,
+   "frame_age_s": 0.075,
+   "scenario": "bird",
+   "loop_p99_ms": 4.973
+  },
+  {
+   "t_s": 2202.1,
+   "rss_mb": 409.32,
+   "frame_age_s": 0.059,
+   "scenario": "bird",
+   "loop_p99_ms": 6.878
+  },
+  {
+   "t_s": 2212.1,
+   "rss_mb": 408.94,
+   "frame_age_s": 0.026,
+   "scenario": "bird",
+   "loop_p99_ms": 7.503
+  },
+  {
+   "t_s": 2222.1,
+   "rss_mb": 408.53,
+   "frame_age_s": 0.008,
+   "scenario": "bird",
+   "loop_p99_ms": 8.138
+  },
+  {
+   "t_s": 2232.1,
+   "rss_mb": 408.72,
+   "frame_age_s": 0.089,
+   "scenario": "bird",
+   "loop_p99_ms": 7.884
+  },
+  {
+   "t_s": 2242.1,
+   "rss_mb": 408.53,
+   "frame_age_s": 0.071,
+   "scenario": "bird",
+   "loop_p99_ms": 5.136
+  },
+  {
+   "t_s": 2252.2,
+   "rss_mb": 408.66,
+   "frame_age_s": 0.032,
+   "scenario": "bird",
+   "loop_p99_ms": 7.623
+  },
+  {
+   "t_s": 2262.2,
+   "rss_mb": 408.56,
+   "frame_age_s": 0.025,
+   "scenario": "bird",
+   "loop_p99_ms": 7.64
+  },
+  {
+   "t_s": 2272.2,
+   "rss_mb": 408.94,
+   "frame_age_s": 0.099,
+   "scenario": "bird",
+   "loop_p99_ms": 6.973
+  },
+  {
+   "t_s": 2282.2,
+   "rss_mb": 408.88,
+   "frame_age_s": 0.06,
+   "scenario": "bird",
+   "loop_p99_ms": 7.208
+  },
+  {
+   "t_s": 2292.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.006,
+   "scenario": "patch",
+   "loop_p99_ms": 5.653
+  },
+  {
+   "t_s": 2302.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.02,
+   "scenario": "patch",
+   "loop_p99_ms": 9.04
+  },
+  {
+   "t_s": 2312.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.079,
+   "scenario": "patch",
+   "loop_p99_ms": 6.779
+  },
+  {
+   "t_s": 2322.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.061,
+   "scenario": "patch",
+   "loop_p99_ms": 10.618
+  },
+  {
+   "t_s": 2332.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.02,
+   "scenario": "patch",
+   "loop_p99_ms": 10.84
+  },
+  {
+   "t_s": 2342.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.005,
+   "scenario": "patch",
+   "loop_p99_ms": 10.657
+  },
+  {
+   "t_s": 2352.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.08,
+   "scenario": "patch",
+   "loop_p99_ms": 8.649
+  },
+  {
+   "t_s": 2362.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.054,
+   "scenario": "patch",
+   "loop_p99_ms": 7.024
+  },
+  {
+   "t_s": 2372.2,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.001,
+   "scenario": "patch",
+   "loop_p99_ms": 18.867
+  },
+  {
+   "t_s": 2382.3,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.007,
+   "scenario": "patch",
+   "loop_p99_ms": 19.564
+  },
+  {
+   "t_s": 2392.3,
+   "rss_mb": 408.69,
+   "frame_age_s": 0.014,
+   "scenario": "patch",
+   "loop_p99_ms": 26.492
+  }
+ ]
+}

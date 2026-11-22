@@ -1,0 +1,56 @@
+{
+ "host": {
+  "machine": "x86_64",
+  "system": "Linux",
+  "torch": "2.15.0+cpu",
+  "onnx": "1.23.2",
+  "onnxruntime": "1.32.0",
+  "threads": 2
+ },
+ "tolerance": 0.001,
+ "models": {
+  "rf_stft_cnn": {
+   "exporter": "dynamo",
+   "file_kb": 553.7,
+   "max_abs_diff": 6.2e-06,
+   "same_output": true,
+   "torch_batch1": {
+    "p50_ms": 3.647,
+    "p99_ms": 7.217
+   },
+   "onnxruntime_batch1": {
+    "p50_ms": 1.609,
+    "p99_ms": 3.145
+   }
+  },
+  "micro_doppler_cnn": {
+   "exporter": "dynamo",
+   "file_kb": 284.0,
+   "max_abs_diff": 3.81e-06,
+   "same_output": true,
+   "torch_batch1": {
+    "p50_ms": 2.949,
+    "p99_ms": 5.342
+   },
+   "onnxruntime_batch1": {
+    "p50_ms": 0.753,
+    "p99_ms": 1.468
+   }
+  },
+  "traj_transformer": {
+   "exporter": "dynamo",
+   "file_kb": 317.4,
+   "max_abs_diff": 2.68e-07,
+   "same_output": true,
+   "torch_batch1": {
+    "p50_ms": 0.543,
+    "p99_ms": 1.022
+   },
+   "onnxruntime_batch1": {
+    "p50_ms": 0.163,
+    "p99_ms": 0.347
+   }
+  }
+ },
+ "passed": true
+}

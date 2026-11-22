@@ -1,6 +1,6 @@
 # Kế hoạch và kết quả kiểm thử (bước 8)
 
-> Cập nhật: 22/11/2026. Trạng thái dùng đúng các mức của dự án: **đã viết**,
+> Cập nhật: 23/11/2026. Trạng thái dùng đúng các mức của dự án: **đã viết**,
 > **đã chạy**, **đã kiểm thử đạt**, **đã triển khai**, **người dùng đã nghiệm
 > thu**. Chưa mục nào ở mức "người dùng đã nghiệm thu".
 
@@ -8,12 +8,14 @@
 
 | Loại | Cách chạy | Số lượng | Kết quả 22/11/2026 |
 |---|---|---|---|
-| Đơn vị + tích hợp (pytest) | `python -m pytest` | **79** | 78 đạt trên Windows, 1 bỏ qua (quyền tệp POSIX); bài đó đạt trong WSL |
+| Đơn vị + tích hợp (pytest) | `python -m pytest` | **82** | 82 đạt trong môi trường cài đúng `requirements.lock` (WSL, 23/11) và CI. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
-| CI | GitHub Actions: lint → quét lỗ hổng → test → đầu-cuối → build Docker + gọi `/api/health` | 5 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
+| CI | GitHub Actions: lint → quét lỗ hổng → test → đầu-cuối → ONNX → build Docker + gọi `/api/health` | 6 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
 | Đầu-cuối trên trình duyệt | **Tự động** bằng Playwright + Chromium (`backend/tests/e2e`), mục 3 | 6 bài, phủ E-1..E-8 + mã truy cập + CSP | 6 đạt trên Windows, 3 lần liên tiếp (~45 s). Trước đó làm tay, tìm ra 4 lỗi |
 | Triển khai thật (Docker) | compose với project và cổng riêng | sao lưu → mất → khôi phục | Đạt (A-16) |
 | Hiệu năng | `experiments/evaluate*.py`, `bench_edge.py` | p99 / khung xấu nhất | Đạt trên x86 (A-1, A-2); **chưa đo trên Jetson** |
+| Chạy dài (soak) | `experiments/soak.py`, mục 6 | 40 phút, như một ca trực | **Tìm ra L-7** trên máy dev; với bản khoá: đạt |
+| ONNX | `experiments/export_onnx.py`, mục 6 | 3 mạng | Cùng kết quả với PyTorch (sai khác ≤ 6e-6) |
 
 ## 2. Test tự động theo nhóm
 
@@ -101,16 +103,67 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
   bằng đúng các lệnh đó, nhưng chạy thẳng script này mới thử ở chế độ `audit`.
 - Trình duyệt ngoài Chromium (Firefox, Safari).
 - Giao diện khi thiếu trọng số, khi đĩa đầy (mới kiểm ở phía máy chủ).
-- Chạy liên tục nhiều ngày: rò bộ nhớ, sao lưu qua đêm thật với chu kỳ 24 h.
-  Docker mới thử với chu kỳ 15 s.
+- Chạy liên tục **7 ngày** (mới chạy 40 phút, mục 6) và sao lưu qua đêm thật
+  với chu kỳ 24 h. Docker mới thử với chu kỳ 15 s.
+- TensorRT FP16 trên Jetson (bản ONNX đã sẵn, mục 6).
 - Kiểm thử chấp nhận với người dùng thật (chuyên viên trực).
 
 ## 5. Cách chạy lại
 
 ```bash
-python -m pytest                              # 79 test, ~4 phút trên laptop
+python -m pytest                              # 82 test, ~4 phút trên laptop
+python -m edge_ai.experiments.soak --minutes 40   # trong backend/: chạy dài, cần psutil
+python -m edge_ai.experiments.export_onnx         # trong backend/: cần extra tools
 # đầu-cuối (một lần: pip install -e ".[e2e]" && python -m playwright install chromium)
 EDGE_E2E=1 python -m pytest backend/tests/e2e  # 6 bài, ~45 s
 pre-commit run --all-files                    # lint
 python -m edge_ai.experiments.evaluate_mtt    # trong backend/: hiệu năng nhiều mục tiêu
 ```
+
+## 6. Chạy dài và xuất ONNX (22–23/11/2026)
+
+### Chạy dài (soak test)
+
+`experiments/soak.py` bật máy chủ thật rồi dùng nó như một ca trực:
+- hỏi trạng thái mỗi 0,5 s (như dashboard);
+- bấm Xác nhận / Bỏ qua mỗi 20 s;
+- đổi kịch bản mỗi 2 phút, vòng qua cả 7 kịch bản, có "Nhiều mục tiêu".
+
+Nhật ký ghi ở thư mục tạm. Kết quả lưu vào `data/results/soak.json`.
+
+| Lần | Môi trường | Bộ nhớ | Quyết định | Lỗi 5xx | Khung đứng lâu nhất | Kết luận |
+|---|---|---|---|---|---|---|
+| 1 | Windows, Python `E:\` của máy dev (**numpy 2.4.0**) | 262 → 722 MB, tăng đều khoảng **550 MB/giờ** | 87/87 | 0 | 0,15 s | **Không đạt → lỗi L-7** |
+| 2 | WSL, cài đúng `requirements.lock` (numpy 2.5.5, torch 2.15.0+cpu, giống Docker) | 409 → 409 MB, đứng yên (max 415) | 102/102 | 0 | 0,11 s | **Đạt** cả 5 tiêu chí |
+
+Ghi chú lần 2: thời gian trả lời `/api/state` có p50 6 ms, p99 54 ms, nhưng có
+một lần lên tới 1,8 s. Vòng xử lý không bị ảnh hưởng (khung đứng lâu nhất
+0,11 s), nên đó là độ trễ phía HTTP. Chưa rõ nguyên nhân: có thể do WSL hoặc
+do lúc đổi kịch bản. Cần theo dõi khi chạy 7 ngày.
+
+| # | Lỗi | Hậu quả | Sửa | Test chống tái phát |
+|---|---|---|---|---|
+| L-7 | numpy **2.4.0** rò bộ nhớ ở mỗi lần gọi `np.eye` / gán qua `.flat` (EKF gọi mỗi khung). Đã tách riêng: 300.000 lần `np.eye(6)` giữ lại 818 MB trên 2.4.0, 0 MB trên 2.5.5. Mã dự án không có lỗi | Chạy vài ngày là hết RAM. Docker và CI dùng tệp khoá (2.5.5) nên không bị, nhưng ai cài tay numpy 2.4.0 thì bị | `pyproject.toml`: `numpy>=1.26,!=2.4.0` | `test_numpy_khong_ro_bo_nho_o_ma_tran_don_vi` (hỏng trên 2.4.0, đạt trên 2.5.5) |
+
+**Bài học:** phải chạy và đo bằng **đúng các phiên bản trong tệp khoá**. Python
+`E:\` của máy dev đang lệch tệp khoá (numpy 2.4.0). Nên nâng lên 2.5.5 hoặc
+dùng một venv cài từ `requirements.lock`.
+
+### Xuất ONNX (hướng dự phòng cho Jetson, A-2)
+
+`experiments/export_onnx.py` xuất cả 3 mạng sang ONNX, rồi so đầu ra với
+PyTorch trên 15 lô ngẫu nhiên (batch 1, 2 và 4). Với 2 bộ phân loại, kiểm thêm
+là lớp thắng phải trùng. Tầng STFT số phức của mạng RF được thay bằng bản số
+thực tương đương; có test `test_onnx_export.py` cho phần này. Job `onnx` trong
+CI chạy lại mỗi lần push.
+
+| Mạng | Tệp ONNX | Sai khác lớn nhất | PyTorch p50 | ONNX Runtime p50 |
+|---|---|---|---|---|
+| RF (STFT + CNN) | 554 KB | 6,2e-6 | 3,6 ms | 1,6 ms |
+| Micro-Doppler CNN | 284 KB | 3,8e-6 | 2,9 ms | 0,75 ms |
+| Transformer quỹ đạo | 317 KB | 2,7e-7 | 0,54 ms | 0,16 ms |
+
+Đo trên CPU x86 trong WSL, 2 luồng, batch 1, 23/11/2026
+(`data/results/onnx_export.json`). Số tuyệt đối dao động theo tải máy; tỉ lệ
+ONNX Runtime nhanh hơn khoảng 2–4 lần thì ổn định qua 3 lần đo. **Chưa** có
+số trên Jetson. Ở đó bước tiếp theo là `trtexec --onnx=... --fp16`.

@@ -29,6 +29,7 @@ lý phải xong trong ngân sách 50 ms của đề bài.
 | 8. Kiểm thử | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) |
 | 9. Triển khai | [docs/DEPLOY.md](docs/DEPLOY.md) |
 | 10. Bảo trì | [docs/MAINTENANCE.md](docs/MAINTENANCE.md) |
+| **Tình trạng cả 10 bước** | [docs/STATUS.md](docs/STATUS.md): bước nào xong, còn thiếu gì, việc chờ chủ dự án |
 
 ## Mục lục
 
@@ -80,7 +81,7 @@ pip install -r requirements-dev.txt
 python -m uvicorn edge_ai.api.server:app --app-dir backend --port 8099
 # mở http://localhost:8099
 
-python -m pytest            # 79 bài kiểm thử
+python -m pytest            # 82 bài kiểm thử
 EDGE_E2E=1 python -m pytest backend/tests/e2e   # 6 bài đầu-cuối trên Chromium (cần extra e2e)
 ```
 

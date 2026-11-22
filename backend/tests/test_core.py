@@ -292,3 +292,24 @@ def test_camera_o_xa_tien_ve_phan_bo_deu_chu_khong_chi_sai():
                 seen += 1
                 assert int(np.argmax(d.cls_logp)) == TARGET_KINDS.index("multirotor")
     assert seen > 0
+
+
+def test_numpy_khong_ro_bo_nho_o_ma_tran_don_vi():
+    """EKF gọi np.eye mỗi khung. numpy 2.4.0 rò bộ nhớ ở đó (khoảng 550 MB/giờ
+    khi chạy dashboard, tìm ra bằng experiments/soak.py). Bài này hỏng nếu ai
+    đó cài nhầm một bản numpy như vậy."""
+    import tracemalloc
+
+    import numpy as np
+
+    tracemalloc.start()
+    try:
+        for _ in range(2000):
+            np.eye(6)
+        before = tracemalloc.get_traced_memory()[0]
+        for _ in range(20000):
+            np.eye(6)
+        grown = tracemalloc.get_traced_memory()[0] - before
+    finally:
+        tracemalloc.stop()
+    assert grown < 1_000_000, f"numpy {np.__version__} giữ lại {grown / 1e6:.1f} MB"

@@ -25,6 +25,8 @@ data/cache/
 data/**/*.npz
 # trọng số .pt trong data/models/ ĐƯỢC commit có chủ đích: tổng < 1 MB,
 # cần cho test và cho dashboard chạy ngay sau khi clone.
+# bản ONNX sinh từ .pt bằng experiments/export_onnx.py
+data/models/onnx/
 
 # --- nhật ký và trạng thái lúc chạy
 logs/

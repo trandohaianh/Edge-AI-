@@ -24,6 +24,16 @@ from edge_ai.tracking import pipeline as PL  # noqa: E402
 LOCAL = ("127.0.0.1", 50000)
 
 
+def _log_lines(base) -> list[str]:
+    """Mọi dòng nhật ký qua các tệp theo tháng (audit_log.AuditStore)."""
+    from edge_ai.api.audit_log import AuditStore
+
+    out = []
+    for f in AuditStore(base).files():
+        out += f.read_text(encoding="utf-8").splitlines()
+    return out
+
+
 @pytest.fixture(scope="module")
 def models():
     return PL.load_models()
@@ -188,16 +198,16 @@ def test_quyet_dinh_duoc_ghi_xuong_dia_va_chi_mot_lan(srv):
         eng._step()
     r = c.post("/api/act", json={"action": "xac_nhan", "operator": "ca-dem.2"})
     assert r.status_code == 200 and r.json()["persisted"] is True
-    lines = log.read_text(encoding="utf-8").splitlines()
+    lines = _log_lines(log)
     assert len(lines) == 1
     rec = json.loads(lines[0])
     assert rec["operator"] == "ca-dem.2" and rec["action"] == "xac_nhan"
     assert rec["frame"] == eng.msg["k"]  # khung đang hiển thị, không lệch 1
     # quyết định thứ hai cho cùng vết bám bị từ chối, giống giao diện
     assert c.post("/api/act", json={"action": "bo_qua"}).status_code == 409
-    assert len(log.read_text(encoding="utf-8").splitlines()) == 1
+    assert len(_log_lines(log)) == 1
     # nhật ký vẫn còn sau khi "khởi động lại" (Engine mới, cùng tệp)
-    assert json.loads(log.read_text(encoding="utf-8").splitlines()[0])["kind"]
+    assert json.loads(_log_lines(log)[0])["kind"]
 
 
 @pytest.mark.parametrize(
@@ -213,7 +223,7 @@ def test_dau_vao_sai_bi_tu_choi(srv, body):
     _, eng, c, log = srv
     eng._step()
     assert c.post("/api/act", json=body).status_code == 422
-    assert not log.exists() or log.read_text(encoding="utf-8") == ""
+    assert _log_lines(log) == []
 
 
 def test_ma_truy_cap_khi_duoc_bat(srv, monkeypatch):
@@ -301,7 +311,7 @@ def test_may_chu_noi_tiep_chuoi_bam_sau_khi_khoi_dong_lai(srv, models):
     eng2 = server.Engine(models=models, audit_path=log, start=False)  # "khởi động lại"
     eng2._step()
     eng2.act("bo_qua", "ca-2")
-    assert audit_log.verify(log) == (True, 2, "")
+    assert audit_log.AuditStore(log).verify() == (True, 2, "")
 
 
 def test_khong_dat_ma_thi_chi_may_chu_moi_dieu_khien_duoc(srv):
@@ -408,7 +418,7 @@ def test_dashboard_nhieu_muc_tieu_va_quyet_dinh_theo_id(srv):
     r = c.post("/api/act", json={"action": "xac_nhan", "tid": tids[-1]})
     assert r.status_code == 200
     assert c.post("/api/act", json={"action": "bo_qua", "tid": tids[-1]}).status_code == 409
-    rec = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])
+    rec = json.loads(_log_lines(log)[-1])
     assert rec["tid"] == tids[-1]
     eng._step()
     s = c.get("/api/state").json()

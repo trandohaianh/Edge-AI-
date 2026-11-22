@@ -10,7 +10,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     EDGE_AUDIT_LOG=/var/lib/edge/audit.jsonl \
     EDGE_STATIC_DIR=/app/frontend \
-    EDGE_DATA_DIR=/app/data
+    EDGE_DATA_DIR=/app/data \
+    PYTHONPATH=/app/backend
 
 WORKDIR /app
 
@@ -25,9 +26,12 @@ COPY frontend/ frontend/
 COPY data/models/ data/models/
 COPY data/results/ data/results/
 
+# Thư mục nhật ký và sao lưu chỉ user "edge" vào được (PRD A-17). Tạo sẵn
+# /backups trong ảnh để volume mới tạo kế thừa đúng chủ sở hữu và quyền.
 RUN useradd --system --uid 10001 --no-create-home edge \
- && mkdir -p /var/lib/edge \
- && chown edge /var/lib/edge
+ && mkdir -p /var/lib/edge /backups \
+ && chown edge /var/lib/edge /backups \
+ && chmod 700 /var/lib/edge /backups
 USER edge
 
 EXPOSE 8099

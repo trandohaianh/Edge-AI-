@@ -149,7 +149,10 @@ class Engine:
         self.audit: deque[AuditEntry] = deque(maxlen=AUDIT_MEM)
         self.audit_path = Path(audit_path) if audit_path else _audit_path()
         self.audit_path.parent.mkdir(parents=True, exist_ok=True)
-        self._last_hash = audit_log.last_hash(self.audit_path)
+        # Nhật ký chia theo tháng: audit_path là tên gốc, tệp thật là
+        # <tên>-YYYY-MM.jsonl cùng thư mục (xem audit_log.AuditStore).
+        self.audit_store = audit_log.AuditStore(self.audit_path)
+        self._last_hash = self.audit_store.last_hash()
         self.started_at = time.time()
         self.last_step = 0.0
         self._stop = threading.Event()
@@ -361,12 +364,10 @@ class Engine:
         trình là mất sạch, trái với cam kết "mọi thao tác đều được ghi nhật
         ký", và list đó lớn lên mãi không giới hạn.
         """
-        rec = audit_log.chain(self._last_hash, asdict(entry) | {"scenario": self.name})
         try:
-            with open(self.audit_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                f.flush()
-                os.fsync(f.fileno())
+            rec = self.audit_store.append(
+                self._last_hash, asdict(entry) | {"scenario": self.name}, ts=entry.ts
+            )
             self._last_hash = rec["hash"]
             return True
         except OSError:

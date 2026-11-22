@@ -1,0 +1,39 @@
+# Caddy làm reverse proxy HTTPS cho dashboard Edge AI.
+#
+# EDGE_DOMAIN=localhost (mặc định): Caddy tự tạo CA nội bộ và cấp chứng chỉ
+#   tự ký — trình duyệt sẽ cảnh báo, dùng để thử trên máy.
+# EDGE_DOMAIN=ten-mien-that.vn: Caddy tự xin chứng chỉ Let's Encrypt và tự gia
+#   hạn (cần DNS trỏ về máy và mở cổng 80/443).
+#
+# Muốn nhận thư báo hết hạn chứng chỉ từ Let's Encrypt thì thêm dòng
+#     email ban@ten-mien.vn
+# vào khối toàn cục { … } ngay dưới đây.
+# (Không dùng biến môi trường cho email: compose truyền chuỗi RỖNG khi biến
+# không được đặt, Caddy nhận "email" không đối số và không khởi động được —
+# lỗi bắt được khi build thử thật.)
+
+{
+	# Trong container không có kho chứng chỉ hệ thống để cài CA nội bộ vào
+	# (hệ tệp lại chỉ đọc): bỏ bước đó, nếu không Caddy ghi lỗi mỗi lần chạy.
+	# Trình duyệt vẫn cảnh báo chứng chỉ tự ký khi EDGE_DOMAIN=localhost.
+	skip_install_trust
+}
+
+{$EDGE_DOMAIN:localhost} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	reverse_proxy app:8099 {
+		health_uri /api/health
+		health_interval 15s
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

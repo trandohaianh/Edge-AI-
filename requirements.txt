@@ -1,9 +1,9 @@
+# Phụ thuộc khi CHẠY (dashboard + vòng xử lý). Dùng trong deploy/Dockerfile.
+# Trên máy không có GPU nên cài torch bản CPU trước:
+#   pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
 numpy>=1.26
 scipy>=1.11
 torch>=2.2
-matplotlib>=3.8
 fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2.6
-pytest>=8.0
-pillow>=10.0

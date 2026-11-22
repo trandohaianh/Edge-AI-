@@ -1,0 +1,102 @@
+# Triển khai riêng cho Edge AI: dashboard FastAPI + Caddy (HTTPS).
+#
+#   cp .env.example .env        # ở GỐC repo, đặt EDGE_API_TOKEN (bắt buộc), EDGE_DOMAIN
+#   docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+#   mở https://localhost  (localhost: chứng chỉ tự ký, trình duyệt sẽ cảnh báo)
+#
+# Cổng 8099 của app KHÔNG mở ra ngoài; chỉ Caddy (80/443) nhận kết nối.
+name: edge-ai
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: edge-ai:latest
+    restart: unless-stopped
+    # Siết container (SECURITY R-7): hệ tệp chỉ đọc, bỏ mọi đặc quyền Linux,
+    # cấm tự nâng quyền. Chỉ volume và /tmp (RAM) là ghi được.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # Qua Caddy, trình duyệt không phải loopback của container nên POST
+      # luôn cần mã. Thiếu mã thì dừng ngay thay vì chạy một dashboard bấm
+      # không được.
+      EDGE_API_TOKEN: ${EDGE_API_TOKEN:?Đặt EDGE_API_TOKEN trong .env (xem .env.example)}
+    volumes:
+      - edge-audit:/var/lib/edge          # nhật ký quyết định chuỗi băm, giữ qua các lần khởi động lại
+    expose:
+      - "8099"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8099/api/health',timeout=2).status==200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
+
+  # Sao lưu nhật ký mỗi ngày một lần và dọn dữ liệu quá 12 tháng (PRD A-16).
+  # Dùng lại đúng ảnh của app, không cài thêm gì.
+  backup:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: edge-ai:latest
+    restart: unless-stopped
+    # Siết container (SECURITY R-7): hệ tệp chỉ đọc, bỏ mọi đặc quyền Linux,
+    # cấm tự nâng quyền. Chỉ volume và /tmp (RAM) là ghi được.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      app:
+        condition: service_healthy
+    command: ["python", "-m", "edge_ai.api.audit_backup", "daily",
+              "--log", "/var/lib/edge/audit.jsonl", "--dest", "/backups",
+              "--interval", "${EDGE_BACKUP_INTERVAL_S:-86400}"]
+    volumes:
+      - edge-audit:/var/lib/edge
+      # Mặc định là volume "edge-backups" trên ổ đĩa máy trạm. Đặt
+      # EDGE_BACKUP_DIR=/đường/dẫn để ghi ra thư mục của máy chủ (thư mục đó
+      # phải thuộc uid 10001: sudo chown 10001 /đường/dẫn).
+      - ${EDGE_BACKUP_DIR:-edge-backups}:/backups
+    healthcheck:
+      disable: true   # dịch vụ này không có cổng HTTP
+
+  caddy:
+    # Ghim theo digest (SECURITY R-5): đổi phiên bản Caddy phải sửa dòng này
+    # có chủ đích, rồi chạy lại danh sách kiểm tra ở docs/DEPLOY.md mục 6.
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]   # Caddy cần mở cổng 80/443
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+      - "${EDGE_HTTPS_PORT:-443}:443/udp"   # HTTP/3
+    environment:
+      EDGE_DOMAIN: ${EDGE_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data                  # chứng chỉ + khoá CA nội bộ
+      - caddy-config:/config
+
+volumes:
+  edge-audit:
+  edge-backups:
+  caddy-data:
+  caddy-config:

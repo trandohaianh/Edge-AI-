@@ -1,0 +1,89 @@
+{
+ "host": {
+  "machine": "AMD64",
+  "processor": "Intel64 Family 6 Model 94 Stepping 3, GenuineIntel",
+  "python": "3.12.4",
+  "torch": "2.11.0+cpu",
+  "threads": 2
+ },
+ "budget_ms": 50.0,
+ "models": {
+  "rf_stft_cnn": {
+   "params": 62452,
+   "file_kb": 262.6,
+   "fp32_weights_kb": 244.0,
+   "latency": {
+    "min_ms": 3.572,
+    "mean_ms": 6.124,
+    "p50_ms": 6.041,
+    "p99_ms": 9.32,
+    "max_ms": 10.188,
+    "n": 300
+   }
+  },
+  "micro_doppler_cnn": {
+   "params": 62452,
+   "file_kb": 261.9,
+   "fp32_weights_kb": 244.0,
+   "latency": {
+    "min_ms": 3.397,
+    "mean_ms": 6.469,
+    "p50_ms": 6.452,
+    "p99_ms": 11.183,
+    "max_ms": 27.37,
+    "n": 300
+   }
+  },
+  "traj_transformer": {
+   "params": 42798,
+   "file_kb": 177.2,
+   "fp32_weights_kb": 167.2,
+   "latency": {
+    "min_ms": 0.577,
+    "mean_ms": 0.775,
+    "p50_ms": 0.665,
+    "p99_ms": 1.49,
+    "max_ms": 1.681,
+    "n": 300
+   }
+  }
+ },
+ "worst_frame_rf_plus_md": {
+  "min_ms": 7.107,
+  "mean_ms": 11.813,
+  "p50_ms": 11.786,
+  "p99_ms": 17.151,
+  "max_ms": 17.418,
+  "n": 300
+ },
+ "mtt_capped_frame_nets": {
+  "min_ms": 10.368,
+  "mean_ms": 16.893,
+  "p50_ms": 17.335,
+  "p99_ms": 26.97,
+  "max_ms": 29.594,
+  "n": 300
+ },
+ "blackout_full_rollout_9s": {
+  "min_ms": 7.178,
+  "mean_ms": 9.561,
+  "p50_ms": 8.622,
+  "p99_ms": 14.313,
+  "max_ms": 14.451,
+  "n": 30
+ },
+ "blackout_one_extension_1s": {
+  "min_ms": 0.792,
+  "mean_ms": 1.399,
+  "p50_ms": 1.322,
+  "p99_ms": 2.465,
+  "max_ms": 2.793,
+  "n": 300
+ },
+ "schedule": {
+  "rf_every_frames": 5,
+  "md_every_frames": 3,
+  "frames_with_both_nets_pct": 0.0,
+  "rf_runs_per_s": 2.0
+ }
+}

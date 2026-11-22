@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edge AI · Giám sát đa cảm biến</title>
+<style>
+:root{--red:#D7153A;--ink:#0C0D10;--panel:#14161B;--line:#262A33;--muted:#8A93A6;
+      --ok:#2BD576;--warn:#FFB020;--paper:#F3F4F7;
+      --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --sans:"Segoe UI",system-ui,-apple-system,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:14px}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{margin:0;font-size:16px;font-weight:800;letter-spacing:.02em}
+header h1 b{color:var(--red)}
+.pill{font:600 11px/1 var(--mono);padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+.pill.live{color:var(--ok);border-color:#1d4731}
+.pill.down{color:var(--red);border-color:#5a1a28}
+.stale .wrap{opacity:.45;filter:grayscale(.6)}
+.banner{margin:14px 14px 0;padding:10px 14px;border-radius:8px;border:1px solid #6b3030;background:#2e1a1a;color:#f3b0b0;font-weight:600;display:none}
+.ask{display:none;margin:0 0 10px;padding:8px 11px;border-radius:7px;border:1px solid #4a3a16;background:#1d1708;color:var(--warn);font-weight:700}
+.msg{min-height:18px;margin-top:8px;font-size:12px;color:var(--muted)}
+.msg.err{color:#f3b0b0}
+.ethic{margin-left:auto;font:600 11px/1.4 var(--sans);color:var(--warn);
+       border:1px solid #4a3a16;background:#1d1708;padding:7px 11px;border-radius:6px;max-width:430px}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.85fr);gap:14px;padding:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h2{margin:0 0 10px;font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700}
+canvas{width:100%;display:block;border-radius:8px;background:#0A0B0E}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font:13px/1.5 var(--mono)}
+.kv span:nth-child(odd){color:var(--muted)}
+.big{font:800 30px/1 var(--sans);letter-spacing:-.02em}
+.bar{height:9px;background:#0A0B0E;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--red)}
+.bar.g i{background:var(--ok)}
+.bar.w i{background:var(--warn)}
+.sens{display:grid;grid-template-columns:76px 1fr 54px;gap:8px;align-items:center;margin-bottom:7px;font:12px var(--mono)}
+.sens.off{opacity:.33}
+.btn{font:700 12px var(--sans);padding:10px 14px;border-radius:7px;border:1px solid var(--line);
+     background:#1B1E25;color:var(--paper);cursor:pointer}
+.btn:hover{border-color:var(--red)}
+.btn.on{background:var(--red);border-color:var(--red)}
+.btn.ok{background:#14321f;border-color:#2f6b45;color:#9df0c0}
+.btn.no{background:#2e1a1a;border-color:#6b3030;color:#f3b0b0}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font:11.5px var(--mono)}
+td,th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:600}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font:700 10.5px var(--mono)}
+.tag.ok{background:#14321f;color:#7fe0a8}.tag.no{background:#2e1a1a;color:#f0a0a0}
+.tag.red{background:#3a1020;color:#ff8aa6}.tag.gray{background:#1B1E25;color:var(--muted)}
+.lat{display:grid;grid-template-columns:92px 1fr 62px;gap:7px;align-items:center;font:11.5px var(--mono);margin-bottom:5px}
+.note{color:var(--muted);font-size:11.5px;line-height:1.5;margin-top:9px}
+.en{color:#5f6878;font-style:italic}
+#trk tr{cursor:pointer}#trk tr:hover td{background:#1B1E25}
+#trk tr.sel td{background:#2a1218}
+.tag.warn{background:#3a2a08;color:var(--warn)}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>EDGE AI · <b>GIÁM SÁT ĐA CẢM BIẾN</b></h1>
+  <span class="pill" id="live" role="status" aria-live="polite">○ đang kết nối…</span>
+  <span class="pill" id="scn">—</span>
+  <span class="pill" id="wx">—</span>
+  <div class="ethic">⚠ Hệ thống chỉ giám sát, nhận dạng, bám quỹ đạo và đề xuất cho người trực ca.
+    Không có chức năng tự động chọn mục tiêu hay điều khiển khí tài.
+    <span class="en">Surveillance and human decision support only — no autonomous engagement.</span></div>
+</header>
+
+<div class="banner" id="banner" role="alert"></div>
+<div class="wrap">
+  <div>
+    <div class="card">
+      <h2>Mặt bằng hiện trường · Site plan (nhìn từ trên xuống)</h2>
+      <canvas id="map" width="900" height="520"></canvas>
+      <div class="row" style="margin-top:10px">
+        <span class="pill"><b style="color:var(--ok)">━</b> quỹ đạo thật</span>
+        <span class="pill"><b style="color:var(--red)">━</b> hệ thống bám được</span>
+        <span class="pill"><b style="color:var(--warn)">┄</b> Transformer dự đoán khi mất dấu</span>
+        <span class="pill">◎ vòng tròn = độ bất định vị trí</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Thời gian xử lý một khung · ngân sách 50 ms</h2>
+      <div id="lat"></div>
+      <div class="note">Đo trên CPU x86 2 nhân trong container, <b>không phải</b> trên Jetson Orin.
+        Hai mô hình nặng không chạy mỗi khung: micro-Doppler cần 0,35 s chiếu radar mới có một
+        chữ ký, RF lấy mẫu 0,5 s một lần.</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Các vết bám · bấm để chọn</h2>
+      <table><thead><tr><th>ID</th><th>Nhận dạng</th><th>Cự ly</th><th>Tin cậy</th><th>Trạng thái</th></tr></thead>
+        <tbody id="trk"><tr><td colspan="5" style="color:var(--muted)">chưa có vết bám</td></tr></tbody></table>
+      <div class="note" id="trknote"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Mục tiêu đang chọn</h2>
+      <div class="row" style="align-items:baseline;gap:12px">
+        <div class="big" id="kind">—</div>
+        <div class="pill" id="status">—</div>
+      </div>
+      <div id="probs" style="margin:12px 0"></div>
+      <div class="kv" id="kin"></div>
+      <div style="margin-top:12px">
+        <div class="row" style="justify-content:space-between;font:12px var(--mono)">
+          <span style="color:var(--muted)">ĐỘ TIN CẬY VẾT BÁM</span><span id="confv">—</span>
+        </div>
+        <div class="bar g" style="margin-top:5px"><i id="confb" style="width:0%"></i></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Bằng chứng theo cảm biến</h2>
+      <div id="sens"></div>
+      <div id="conflict" class="note"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Quyết định của người trực ca</h2>
+      <p class="note" style="margin-top:0">Hệ thống chỉ đề xuất. Mọi quyết định do người đưa ra và được ghi nhật ký.</p>
+      <div class="ask" id="ask" role="status">● Hệ thống đề nghị chuyên viên xem xét vết bám này</div>
+      <div class="row">
+        <button class="btn ok" id="bok">✓ Xác nhận mục tiêu</button>
+        <button class="btn no" id="bno">✕ Bỏ qua</button>
+      </div>
+      <div class="msg" id="actmsg" aria-live="polite"></div>
+      <table style="margin-top:12px"><thead><tr><th>Khung</th><th>Hành động</th><th>Người trực</th><th>Nhận dạng</th><th>Tin cậy</th></tr></thead>
+        <tbody id="audit"><tr><td colspan="5" style="color:var(--muted)">chưa có thao tác nào</td></tr></tbody></table>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Kịch bản hiện trường</h2>
+      <div class="row" id="scen"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

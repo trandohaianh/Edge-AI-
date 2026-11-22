@@ -1,0 +1,552 @@
+{
+ "scenarios": [
+  {
+   "scenario": "S1 · trời quang, drone đa cánh quạt",
+   "n_runs": 8,
+   "rmse_m": 9.074,
+   "rmse_m_ci95": [
+    0.024,
+    18.123
+   ],
+   "rmse_final_m": 8.142,
+   "rmse_final_m_ci95": [
+    -3.954,
+    20.237
+   ],
+   "mean_conf": 0.993,
+   "mean_conf_ci95": [
+    0.989,
+    0.997
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 2.237,
+   "time_to_confirm_s_ci95": [
+    1.727,
+    2.748
+   ],
+   "time_to_correct_id_s": 0.113,
+   "time_to_correct_id_s_ci95": [
+    -0.042,
+    0.267
+   ],
+   "pred_rmse_transformer_m": null,
+   "pred_rmse_const_vel_m": null,
+   "operator_ask_rate": 0.898,
+   "operator_ask_rate_ci95": [
+    0.875,
+    0.921
+   ]
+  },
+  {
+   "scenario": "S2 · đêm + sương mù dày",
+   "n_runs": 8,
+   "rmse_m": 9.094,
+   "rmse_m_ci95": [
+    5.561,
+    12.627
+   ],
+   "rmse_final_m": 8.92,
+   "rmse_final_m_ci95": [
+    4.215,
+    13.626
+   ],
+   "mean_conf": 0.991,
+   "mean_conf_ci95": [
+    0.989,
+    0.992
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 2.688,
+   "time_to_confirm_s_ci95": [
+    2.229,
+    3.146
+   ],
+   "time_to_correct_id_s": 0.15,
+   "time_to_correct_id_s_ci95": [
+    -0.072,
+    0.372
+   ],
+   "pred_rmse_transformer_m": null,
+   "pred_rmse_const_vel_m": null,
+   "operator_ask_rate": 0.878,
+   "operator_ask_rate_ci95": [
+    0.857,
+    0.899
+   ]
+  },
+  {
+   "scenario": "S3 · nhiễu dải RF",
+   "n_runs": 8,
+   "rmse_m": 8.183,
+   "rmse_m_ci95": [
+    2.394,
+    13.971
+   ],
+   "rmse_final_m": 6.362,
+   "rmse_final_m_ci95": [
+    0.134,
+    12.591
+   ],
+   "mean_conf": 0.992,
+   "mean_conf_ci95": [
+    0.989,
+    0.995
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 3.075,
+   "time_to_confirm_s_ci95": [
+    2.16,
+    3.99
+   ],
+   "time_to_correct_id_s": 0.075,
+   "time_to_correct_id_s_ci95": [
+    -0.021,
+    0.171
+   ],
+   "pred_rmse_transformer_m": null,
+   "pred_rmse_const_vel_m": null,
+   "operator_ask_rate": 0.86,
+   "operator_ask_rate_ci95": [
+    0.819,
+    0.902
+   ]
+  },
+  {
+   "scenario": "S4 · mưa to",
+   "n_runs": 8,
+   "rmse_m": 5.814,
+   "rmse_m_ci95": [
+    1.065,
+    10.562
+   ],
+   "rmse_final_m": 3.283,
+   "rmse_final_m_ci95": [
+    0.398,
+    6.168
+   ],
+   "mean_conf": 0.993,
+   "mean_conf_ci95": [
+    0.988,
+    0.998
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 1.863,
+   "time_to_confirm_s_ci95": [
+    1.126,
+    2.599
+   ],
+   "time_to_correct_id_s": 0.263,
+   "time_to_correct_id_s_ci95": [
+    0.056,
+    0.469
+   ],
+   "pred_rmse_transformer_m": null,
+   "pred_rmse_const_vel_m": null,
+   "operator_ask_rate": 0.915,
+   "operator_ask_rate_ci95": [
+    0.882,
+    0.949
+   ]
+  },
+  {
+   "scenario": "S5 · chim (phải loại, không báo động)",
+   "n_runs": 8,
+   "rmse_m": 13.703,
+   "rmse_m_ci95": [
+    2.664,
+    24.741
+   ],
+   "rmse_final_m": 14.998,
+   "rmse_final_m_ci95": [
+    0.058,
+    29.938
+   ],
+   "mean_conf": 0.867,
+   "mean_conf_ci95": [
+    0.809,
+    0.926
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 6.238,
+   "time_to_confirm_s_ci95": [
+    4.252,
+    8.223
+   ],
+   "time_to_correct_id_s": 0.038,
+   "time_to_correct_id_s_ci95": [
+    -0.036,
+    0.111
+   ],
+   "pred_rmse_transformer_m": null,
+   "pred_rmse_const_vel_m": null,
+   "operator_ask_rate": 0.0,
+   "operator_ask_rate_ci95": [
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "scenario": "S6 · dán nhãn ngụy trang đánh lừa camera",
+   "n_runs": 8,
+   "rmse_m": 0.914,
+   "rmse_m_ci95": [
+    0.776,
+    1.053
+   ],
+   "rmse_final_m": 0.772,
+   "rmse_final_m_ci95": [
+    0.68,
+    0.863
+   ],
+   "mean_conf": 0.649,
+   "mean_conf_ci95": [
+    0.649,
+    0.649
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 1.337,
+   "time_to_confirm_s_ci95": [
+    1.302,
+    1.373
+   ],
+   "time_to_correct_id_s": 0.0,
+   "time_to_correct_id_s_ci95": [
+    0.0,
+    0.0
+   ],
+   "pred_rmse_transformer_m": null,
+   "pred_rmse_const_vel_m": null,
+   "operator_ask_rate": 0.941,
+   "operator_ask_rate_ci95": [
+    0.939,
+    0.943
+   ]
+  },
+  {
+   "scenario": "S7 · mất dấu 4 giây giữa chừng",
+   "n_runs": 8,
+   "rmse_m": 13.579,
+   "rmse_m_ci95": [
+    8.828,
+    18.331
+   ],
+   "rmse_final_m": 10.916,
+   "rmse_final_m_ci95": [
+    2.957,
+    18.875
+   ],
+   "mean_conf": 0.988,
+   "mean_conf_ci95": [
+    0.986,
+    0.991
+   ],
+   "cls_acc_after_warmup": 1.0,
+   "cls_acc_after_warmup_ci95": [
+    1.0,
+    1.0
+   ],
+   "time_to_confirm_s": 2.95,
+   "time_to_confirm_s_ci95": [
+    2.548,
+    3.352
+   ],
+   "time_to_correct_id_s": 0.413,
+   "time_to_correct_id_s_ci95": [
+    0.099,
+    0.726
+   ],
+   "pred_rmse_transformer_m": 18.341,
+   "pred_rmse_transformer_m_ci95": [
+    12.292,
+    24.39
+   ],
+   "pred_rmse_const_vel_m": 26.909,
+   "pred_rmse_const_vel_m_ci95": [
+    17.206,
+    36.611
+   ],
+   "operator_ask_rate": 0.866,
+   "operator_ask_rate_ci95": [
+    0.848,
+    0.884
+   ],
+   "blind_curve": [
+    {
+     "t_s": 0.3,
+     "transformer_m": 10.88,
+     "const_vel_m": 13.82
+    },
+    {
+     "t_s": 0.4,
+     "transformer_m": 10.74,
+     "const_vel_m": 14.41
+    },
+    {
+     "t_s": 0.5,
+     "transformer_m": 10.99,
+     "const_vel_m": 15.06
+    },
+    {
+     "t_s": 0.6,
+     "transformer_m": 11.36,
+     "const_vel_m": 15.74
+    },
+    {
+     "t_s": 0.7,
+     "transformer_m": 11.72,
+     "const_vel_m": 16.41
+    },
+    {
+     "t_s": 0.8,
+     "transformer_m": 12.08,
+     "const_vel_m": 17.06
+    },
+    {
+     "t_s": 0.9,
+     "transformer_m": 12.44,
+     "const_vel_m": 17.72
+    },
+    {
+     "t_s": 1.0,
+     "transformer_m": 12.87,
+     "const_vel_m": 18.45
+    },
+    {
+     "t_s": 1.1,
+     "transformer_m": 13.42,
+     "const_vel_m": 19.29
+    },
+    {
+     "t_s": 1.2,
+     "transformer_m": 14.0,
+     "const_vel_m": 20.15
+    },
+    {
+     "t_s": 1.3,
+     "transformer_m": 14.5,
+     "const_vel_m": 20.94
+    },
+    {
+     "t_s": 1.4,
+     "transformer_m": 14.93,
+     "const_vel_m": 21.64
+    },
+    {
+     "t_s": 1.5,
+     "transformer_m": 15.3,
+     "const_vel_m": 22.26
+    },
+    {
+     "t_s": 1.6,
+     "transformer_m": 15.69,
+     "const_vel_m": 22.87
+    },
+    {
+     "t_s": 1.7,
+     "transformer_m": 16.12,
+     "const_vel_m": 23.47
+    },
+    {
+     "t_s": 1.8,
+     "transformer_m": 16.58,
+     "const_vel_m": 24.07
+    },
+    {
+     "t_s": 1.9,
+     "transformer_m": 17.0,
+     "const_vel_m": 24.69
+    },
+    {
+     "t_s": 2.0,
+     "transformer_m": 17.37,
+     "const_vel_m": 25.35
+    },
+    {
+     "t_s": 2.1,
+     "transformer_m": 17.76,
+     "const_vel_m": 26.06
+    },
+    {
+     "t_s": 2.2,
+     "transformer_m": 18.2,
+     "const_vel_m": 26.82
+    },
+    {
+     "t_s": 2.3,
+     "transformer_m": 18.69,
+     "const_vel_m": 27.62
+    },
+    {
+     "t_s": 2.4,
+     "transformer_m": 19.23,
+     "const_vel_m": 28.41
+    },
+    {
+     "t_s": 2.5,
+     "transformer_m": 19.76,
+     "const_vel_m": 29.15
+    },
+    {
+     "t_s": 2.6,
+     "transformer_m": 20.24,
+     "const_vel_m": 29.85
+    },
+    {
+     "t_s": 2.7,
+     "transformer_m": 20.68,
+     "const_vel_m": 30.56
+    },
+    {
+     "t_s": 2.8,
+     "transformer_m": 21.12,
+     "const_vel_m": 31.3
+    },
+    {
+     "t_s": 2.9,
+     "transformer_m": 21.59,
+     "const_vel_m": 32.11
+    },
+    {
+     "t_s": 3.0,
+     "transformer_m": 22.08,
+     "const_vel_m": 32.96
+    },
+    {
+     "t_s": 3.1,
+     "transformer_m": 22.65,
+     "const_vel_m": 33.81
+    },
+    {
+     "t_s": 3.2,
+     "transformer_m": 23.19,
+     "const_vel_m": 34.67
+    },
+    {
+     "t_s": 3.3,
+     "transformer_m": 23.69,
+     "const_vel_m": 35.51
+    },
+    {
+     "t_s": 3.4,
+     "transformer_m": 24.17,
+     "const_vel_m": 36.31
+    },
+    {
+     "t_s": 3.5,
+     "transformer_m": 24.64,
+     "const_vel_m": 37.08
+    },
+    {
+     "t_s": 3.6,
+     "transformer_m": 25.17,
+     "const_vel_m": 37.84
+    },
+    {
+     "t_s": 3.7,
+     "transformer_m": 25.75,
+     "const_vel_m": 38.6
+    },
+    {
+     "t_s": 3.8,
+     "transformer_m": 26.28,
+     "const_vel_m": 39.38
+    },
+    {
+     "t_s": 3.9,
+     "transformer_m": 26.79,
+     "const_vel_m": 40.16
+    },
+    {
+     "t_s": 4.0,
+     "transformer_m": 27.29,
+     "const_vel_m": 40.92
+    }
+   ]
+  }
+ ],
+ "latency_ms": {
+  "preproc": {
+   "mean_ms": 0.003,
+   "p95_ms": 0.004,
+   "p99_ms": 0.009,
+   "max_ms": 1.716,
+   "n": 12152
+  },
+  "rf_net": {
+   "mean_ms": 1.614,
+   "p95_ms": 10.54,
+   "p99_ms": 24.027,
+   "max_ms": 573.23,
+   "n": 12152
+  },
+  "md_net": {
+   "mean_ms": 2.585,
+   "p95_ms": 13.109,
+   "p99_ms": 28.731,
+   "max_ms": 281.387,
+   "n": 12152
+  },
+  "assoc": {
+   "mean_ms": 0.007,
+   "p95_ms": 0.012,
+   "p99_ms": 0.027,
+   "max_ms": 4.714,
+   "n": 12152
+  },
+  "ekf": {
+   "mean_ms": 0.516,
+   "p95_ms": 1.11,
+   "p99_ms": 2.448,
+   "max_ms": 31.811,
+   "n": 12152
+  },
+  "fuse": {
+   "mean_ms": 0.265,
+   "p95_ms": 0.533,
+   "p99_ms": 1.165,
+   "max_ms": 23.401,
+   "n": 12152
+  },
+  "traj": {
+   "mean_ms": 0.042,
+   "p95_ms": 0.021,
+   "p99_ms": 0.295,
+   "max_ms": 44.938,
+   "n": 12152
+  },
+  "total": {
+   "mean_ms": 5.134,
+   "p95_ms": 19.477,
+   "p99_ms": 37.659,
+   "max_ms": 575.398,
+   "n": 12152
+  }
+ },
+ "frames": 220,
+ "runs_per_scenario": 8,
+ "note": "Đo trên CPU x86 2 nhân trong container, KHÔNG phải trên Jetson Orin. Đã bỏ 3 khung khởi động đầu mỗi lần chạy. Xem phần hạn chế của báo cáo."
+}

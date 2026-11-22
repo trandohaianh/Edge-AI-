@@ -1,0 +1,49 @@
+# Ảnh chạy dashboard + vòng xử lý trên CPU (x86_64 hoặc arm64).
+# Build từ GỐC repo:   docker build -f deploy/Dockerfile -t edge-ai .
+# Trên Jetson: thay ảnh gốc bằng l4t-pytorch của NVIDIA đúng bản JetPack để
+# torch dùng được GPU (xem reports/02, mục 7).
+# Ghim theo digest để bản dựng lặp lại được (SECURITY R-5); cập nhật hằng
+# tháng theo docs/MAINTENANCE.md.
+FROM python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONUTF8=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    EDGE_AUDIT_LOG=/var/lib/edge/audit.jsonl \
+    EDGE_STATIC_DIR=/app/frontend \
+    EDGE_DATA_DIR=/app/data \
+    PYTHONPATH=/app/backend
+
+WORKDIR /app
+
+# Tầng phụ thuộc tách riêng để đổi mã không phải cài lại torch.
+# Cài ĐÚNG các phiên bản trong requirements.lock, kiểm SHA-256 từng gói
+# (SECURITY R-4). torch bản CPU từ kho của PyTorch, còn lại từ PyPI.
+COPY requirements.lock .
+RUN pip install --no-cache-dir --require-hashes \
+      --index-url https://download.pytorch.org/whl/cpu \
+      --extra-index-url https://pypi.org/simple \
+      -r requirements.lock
+
+COPY backend/edge_ai/ backend/edge_ai/
+COPY frontend/ frontend/
+COPY data/models/ data/models/
+COPY data/results/ data/results/
+
+# Thư mục nhật ký và sao lưu chỉ user "edge" vào được (PRD A-17). Tạo sẵn
+# /backups trong ảnh để volume mới tạo kế thừa đúng chủ sở hữu và quyền.
+RUN useradd --system --uid 10001 --no-create-home edge \
+ && mkdir -p /var/lib/edge /backups \
+ && chown edge /var/lib/edge /backups \
+ && chmod 700 /var/lib/edge /backups
+USER edge
+
+EXPOSE 8099
+HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
+  CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8099/api/health',timeout=2).status==200 else 1)"
+
+# --proxy-headers + forwarded-allow-ips: tin header X-Forwarded-* từ Caddy
+# trong mạng nội bộ của compose để log ghi đúng IP người dùng và https.
+CMD ["python", "-m", "uvicorn", "edge_ai.api.server:app", "--app-dir", "backend", \
+     "--host", "0.0.0.0", "--port", "8099", "--proxy-headers", "--forwarded-allow-ips", "*"]

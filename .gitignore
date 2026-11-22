@@ -1,10 +1,41 @@
+# --- Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+build/
+dist/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 .venv/
+venv/
+
+# --- bí mật và thông tin riêng (KHÔNG BAO GIỜ commit)
 .env
+.env.*
+!.env.example
 TAI-KHOAN.md
-data/*_test.npz
-data/rf_cache*.npz
-data/audit*.jsonl
+*.pem
+*.key
+
+# --- dữ liệu sinh ra khi chạy (tái tạo được bằng các script huấn luyện)
+data/cache/
+data/**/*.npz
+# trọng số .pt trong data/models/ ĐƯỢC commit có chủ đích: tổng < 1 MB,
+# cần cho test và cho dashboard chạy ngay sau khi clone.
+
+# --- nhật ký và trạng thái lúc chạy
 logs/
+*.jsonl
+deploy/caddy_data/
+deploy/caddy_config/
+
+# --- công cụ / hệ điều hành
+.claude/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+node_modules/

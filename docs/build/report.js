@@ -8,10 +8,10 @@ const {
 
 const L = process.argv[2] === 'en' ? 'en' : 'vi';
 const T = (vi, en) => (L === 'en' ? en : vi);
-const D = f => JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/' + f)));
+const D = f => JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/results/' + f)));
 const RF = D('rf_metrics.json'), MD = D('md_metrics.json'), TJ = D('traj_metrics.json');
 const SC = D('scenario_results.json'), AD = D('adversarial.json');
-const TJS = fs.existsSync(path.join(__dirname, '../../data/traj_metrics_synthetic.json'))
+const TJS = fs.existsSync(path.join(__dirname, '../../data/results/traj_metrics_synthetic.json'))
   ? D('traj_metrics_synthetic.json') : null;
 const LAT = SC.latency_ms;
 const RED = 'D7153A', INK = '111111', GREY = 'F2F2F2';

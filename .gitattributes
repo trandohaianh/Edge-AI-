@@ -1,0 +1,10 @@
+# Chuẩn hoá xuống dòng LF trong repo (tránh cảnh báo CRLF trên Windows)
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+# nhị phân
+*.pt binary
+*.png binary
+*.pdf binary
+*.docx binary
+*.pptx binary

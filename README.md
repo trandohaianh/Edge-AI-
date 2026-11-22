@@ -81,6 +81,7 @@ python -m uvicorn edge_ai.api.server:app --app-dir backend --port 8099
 # mở http://localhost:8099
 
 python -m pytest            # 79 bài kiểm thử
+EDGE_E2E=1 python -m pytest backend/tests/e2e   # 6 bài đầu-cuối trên Chromium (cần extra e2e)
 ```
 
 Trọng số đã huấn luyện (< 1 MB) nằm sẵn trong `data/models/` nên dashboard
@@ -117,6 +118,7 @@ backend/                     BACKEND — Python, gói "edge_ai"
     training/                huấn luyện (offline)
       train_detect.py, train_rf2.py, train_traj_ekf.py, train_traj.py, ablation_rf.py
   tests/                     pytest: test_core, test_mtt, test_pipeline_server, test_audit_backup
+    e2e/                     Playwright: máy chủ thật + Chromium thật (chỉ chạy khi EDGE_E2E=1)
 frontend/                    FRONTEND — dashboard tĩnh (HTML/CSS/JS thuần, không cần build)
   index.html
 data/                        DỮ LIỆU

@@ -10,8 +10,8 @@
 |---|---|---|---|
 | Đơn vị + tích hợp (pytest) | `python -m pytest` | **79** | 78 đạt trên Windows, 1 bỏ qua (quyền tệp POSIX); bài đó đạt trong WSL |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
-| CI | GitHub Actions: lint → quét lỗ hổng → test → build Docker + gọi `/api/health` | 4 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
-| Đầu-cuối trên trình duyệt | Thủ công có kịch bản, mục 3 | 9 bước | Đạt sau khi sửa 4 lỗi |
+| CI | GitHub Actions: lint → quét lỗ hổng → test → đầu-cuối → build Docker + gọi `/api/health` | 5 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
+| Đầu-cuối trên trình duyệt | **Tự động** bằng Playwright + Chromium (`backend/tests/e2e`), mục 3 | 6 bài, phủ E-1..E-8 + mã truy cập + CSP | 6 đạt trên Windows, 3 lần liên tiếp (~45 s). Trước đó làm tay, tìm ra 4 lỗi |
 | Triển khai thật (Docker) | compose với project và cổng riêng | sao lưu → mất → khôi phục | Đạt (A-16) |
 | Hiệu năng | `experiments/evaluate*.py`, `bench_edge.py` | p99 / khung xấu nhất | Đạt trên x86 (A-1, A-2); **chưa đo trên Jetson** |
 
@@ -30,7 +30,7 @@
 |---|---|---|
 | Unit | ✅ | `test_core`, `test_mtt` |
 | Integration | ✅ | `TestClient` gọi API thật với Engine thật |
-| E2E | ✅ thủ công | Mục 3. Chưa tự động hoá (cần Playwright, phải tải trình duyệt) |
+| E2E | ✅ tự động | Mục 3. Playwright, chạy trong CI (job `e2e`) |
 | Phân quyền | ✅ | Có mã / không mã / sai mã / bị khoá / khác trang / máy khác |
 | Responsive | ⚠️ | Chỉ màn hình máy tính (Q-6); có một điểm gãy 980 px, chưa thử nhiều cỡ |
 | Xử lý lỗi | ✅ | 401/403/404/409/422/429/503, mất kết nối, đĩa không ghi được (máy chủ) |
@@ -39,20 +39,28 @@
 
 ## 3. Kịch bản kiểm thử đầu-cuối trên trình duyệt
 
-Chạy trên trình duyệt Chromium tích hợp, máy chủ cục bộ, nhật ký ở thư mục tạm.
+Lần đầu (22/11) làm tay trên Chromium. Nay các bước được tự động hoá trong
+`backend/tests/e2e/test_dashboard_e2e.py`: mỗi bài bật **máy chủ thật**
+(uvicorn, nhật ký ở thư mục tạm) và **Chromium thật**, rồi bấm như người trực.
+Cột "Bài tự động" ghi bài nào kiểm bước đó.
 
-| # | Bước | Mong đợi | Kết quả |
-|---|---|---|---|
-| E-1 | Mở dashboard | `● đang chạy`, có vết bám, bản đồ vẽ | Đạt |
-| E-2 | Bấm **Xác nhận** | "Đã ghi quyết định vào nhật ký."; hàng đổi thành `ĐÃ XÁC NHẬN`; nút khoá | Đạt |
-| E-3 | Chuyển kịch bản **Nhiều mục tiêu** | 3 drone `CHỜ QUYẾT ĐỊNH`, chim chỉ "đang bám" (không làm phiền người) | Đạt |
-| E-4 | Chọn vết #7, bấm **Bỏ qua** | Chỉ #7 thành `ĐÃ BỎ QUA` | Đạt |
-| E-5 | Kiểm nhật ký bằng dòng lệnh | 2 dòng hợp lệ, đúng `tid` và kịch bản | **Lỗi → đã sửa** (L-1) |
-| E-6 | Tắt máy chủ | Báo mất kết nối, làm mờ số liệu cũ, khoá nút | **Lỗi → đã sửa** (L-2) |
-| E-7 | Bấm Xác nhận khi mất kết nối | Báo tiếng Việt, nói rõ chưa ghi | **Lỗi → đã sửa** (L-2) |
-| E-8 | Kết nối lại | Tự trở lại bình thường, không cần tải lại trang | Đạt |
-| E-9 | Cập nhật giao diện rồi mở lại trang | Trình duyệt lấy bản mới | **Lỗi → đã sửa** (L-3) |
-| E-10 | Bấm thật trên trình duyệt sau khi thêm chống CSRF | Vẫn ghi được (200) | Đạt |
+Đã thử độ nhạy: cố ý bỏ dòng làm mờ khi mất kết nối thì bài `e6_e8` báo lỗi
+ngay; trả lại thì đạt.
+
+| # | Bước | Mong đợi | Kết quả | Bài tự động |
+|---|---|---|---|---|
+| E-1 | Mở dashboard | `● đang chạy`, có vết bám, bản đồ vẽ | Đạt | `e1` |
+| E-2 | Bấm **Xác nhận** | "Đã ghi quyết định vào nhật ký."; hàng đổi thành `ĐÃ XÁC NHẬN`; nút khoá | Đạt | `e2_e5` |
+| E-3 | Chuyển kịch bản **Nhiều mục tiêu** | 3 drone `CHỜ QUYẾT ĐỊNH`, chim chỉ "đang bám" (không làm phiền người) | Đạt | `e3_e4` |
+| E-4 | Chọn vết #7, bấm **Bỏ qua** | Chỉ #7 thành `ĐÃ BỎ QUA` | Đạt | `e3_e4` (vết chờ thứ hai) |
+| E-5 | Kiểm nhật ký bằng dòng lệnh | 2 dòng hợp lệ, đúng `tid` và kịch bản | **Lỗi → đã sửa** (L-1) | `e2_e5` |
+| E-6 | Tắt máy chủ | Báo mất kết nối, làm mờ số liệu cũ, khoá nút | **Lỗi → đã sửa** (L-2) | `e6_e8` |
+| E-7 | Bấm Xác nhận khi mất kết nối | Báo tiếng Việt, nói rõ chưa ghi | **Lỗi → đã sửa** (L-2) | `e6_e8` |
+| E-8 | Kết nối lại | Tự trở lại bình thường, không cần tải lại trang | Đạt | `e6_e8` |
+| E-9 | Cập nhật giao diện rồi mở lại trang | Trình duyệt lấy bản mới | **Lỗi → đã sửa** (L-3) | test API `test_trang_dashboard_khong_bi_luu_dem_ban_cu` |
+| E-10 | Bấm thật trên trình duyệt sau khi thêm chống CSRF | Vẫn ghi được (200) | Đạt | mọi bài bấm nút (Origin do trình duyệt gửi) |
+| E-11 | Máy chủ có mã: nhập sai rồi nhập đúng | Mã sai bị từ chối, không ghi gì; mã đúng ghi được; lần sau không hỏi lại; mã không lên URL | Đạt (mới) | `ma_truy_cap…` |
+| E-12 | Chèn thử script vào trang | Không chạy (CSP) | Đạt | `csp_chan_script…` |
 
 ### Lỗi tìm được và đã sửa (commit `4544bb5`, `4266f4e`)
 
@@ -92,8 +100,6 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
 - `bash deploy/lock-deps.sh` ở chế độ sinh lại: tệp khoá hiện có được sinh
   bằng đúng các lệnh đó, nhưng chạy thẳng script này mới thử ở chế độ `audit`.
 - Trình duyệt ngoài Chromium (Firefox, Safari).
-- Dashboard ở chế độ có mã truy cập trên trình duyệt thật: luồng hỏi mã dùng
-  `prompt()`, mới kiểm qua API.
 - Giao diện khi thiếu trọng số, khi đĩa đầy (mới kiểm ở phía máy chủ).
 - Chạy liên tục nhiều ngày: rò bộ nhớ, sao lưu qua đêm thật với chu kỳ 24 h.
   Docker mới thử với chu kỳ 15 s.
@@ -103,6 +109,8 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
 
 ```bash
 python -m pytest                              # 79 test, ~4 phút trên laptop
+# đầu-cuối (một lần: pip install -e ".[e2e]" && python -m playwright install chromium)
+EDGE_E2E=1 python -m pytest backend/tests/e2e  # 6 bài, ~45 s
 pre-commit run --all-files                    # lint
 python -m edge_ai.experiments.evaluate_mtt    # trong backend/: hiệu năng nhiều mục tiêu
 ```

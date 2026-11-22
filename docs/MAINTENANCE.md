@@ -25,7 +25,7 @@
 | **P1** | Sinh lại DOCX/PDF/slide theo số mới | Tài liệu nộp đang dùng số cũ | Chủ dự án làm |
 | ~~P2~~ ✅ 22/11 | Siết container: `read_only`, `cap_drop: ALL`, `no-new-privileges`; ghim digest ảnh | SECURITY R-5, R-7 | Nửa ngày + chạy thử Docker |
 | ~~P2~~ ✅ 22/11 | Tách JS khỏi `index.html`, bỏ `'unsafe-inline'` trong CSP | SECURITY R-3 | Nửa ngày |
-| P2 | Kiểm thử đầu-cuối tự động bằng Playwright, cho vào CI | Hiện E2E làm tay (TEST_PLAN mục 3) | 1 ngày |
+| ~~P2~~ ✅ 22/11 | Kiểm thử đầu-cuối tự động bằng Playwright, cho vào CI | Đã có 6 bài trong `backend/tests/e2e`, job `e2e` trong CI (TEST_PLAN mục 3) | — |
 | P2 | Chạy liên tục 7 ngày: theo dõi bộ nhớ, sao lưu thật mỗi 24 h | Chưa thử chạy dài (TEST_PLAN mục 4) | 7 ngày chạy nền |
 | P2 | Xuất hai CNN sang ONNX Runtime / TensorRT FP16 nếu Jetson chậm | Hướng dự phòng cho A-2 với 6–10 mục tiêu | 2–3 ngày |
 | P3 | Tài khoản riêng cho từng chuyên viên (L-3); khi đó chuyển nhật ký sang PostgreSQL, giữ cột băm | SECURITY R-1; kéo theo nghĩa vụ dữ liệu cá nhân (SECURITY mục 4) | 1–2 tuần |

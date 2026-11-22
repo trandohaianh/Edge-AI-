@@ -15,6 +15,21 @@ lý phải xong trong ngân sách 50 ms của đề bài.
 
 ---
 
+## Tài liệu theo quy trình 10 bước
+
+| Bước | Tài liệu |
+|---|---|
+| 1. Yêu cầu | [docs/PRD.md](docs/PRD.md) |
+| 2. Kiến trúc | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| 3. Dữ liệu | [docs/DATA.md](docs/DATA.md) |
+| 4. Giao diện | [docs/UI.md](docs/UI.md) |
+| 5. Khung dự án | [docs/CONVENTIONS.md](docs/CONVENTIONS.md), `reports/03` |
+| 6. Tính năng | PRD mục 5 và 9, `reports/01–03` |
+| 7. Bảo mật | [docs/SECURITY.md](docs/SECURITY.md) |
+| 8. Kiểm thử | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) |
+| 9. Triển khai | [docs/DEPLOY.md](docs/DEPLOY.md) |
+| 10. Bảo trì | [docs/MAINTENANCE.md](docs/MAINTENANCE.md) |
+
 ## Mục lục
 
 1. [Kết quả đo được](#kết-quả-đo-được)
@@ -65,7 +80,7 @@ pip install -r requirements-dev.txt
 python -m uvicorn edge_ai.api.server:app --app-dir backend --port 8099
 # mở http://localhost:8099
 
-python -m pytest            # 73 bài kiểm thử
+python -m pytest            # 78 bài kiểm thử
 ```
 
 Trọng số đã huấn luyện (< 1 MB) nằm sẵn trong `data/models/` nên dashboard
@@ -96,18 +111,20 @@ backend/                     BACKEND — Python, gói "edge_ai"
       server.py                FastAPI: dashboard, /api/*, xác thực, header bảo mật
       audit_log.py             nhật ký quyết định chuỗi băm SHA-256, chia theo tháng + công cụ kiểm tra
       audit_backup.py          sao lưu / khôi phục / dọn 12 tháng
+      auth.py                  chặn dò mã truy cập (khoá tạm theo IP)
     experiments/             đánh giá (không chạy trên trạm)
       evaluate.py, evaluate_mtt.py, adversarial.py, bench_edge.py, figures.py
     training/                huấn luyện (offline)
       train_detect.py, train_rf2.py, train_traj_ekf.py, train_traj.py, ablation_rf.py
-  tests/                     pytest: test_core, test_mtt, test_pipeline_server
+  tests/                     pytest: test_core, test_mtt, test_pipeline_server, test_audit_backup
 frontend/                    FRONTEND — dashboard tĩnh (HTML/CSS/JS thuần, không cần build)
   index.html
 data/                        DỮ LIỆU
   models/                    trọng số .pt (commit, tổng < 1 MB)
   results/                   số đo .json mà báo cáo và dashboard đọc
 deploy/                      TRIỂN KHAI: Dockerfile, docker-compose.yml, Caddyfile (HTTPS)
-docs/                        PRD.md (yêu cầu sản phẩm), CONVENTIONS.md, báo cáo DOCX/PDF, slide, hình
+docs/                        PRD.md (yêu cầu), ARCHITECTURE, DATA, UI, SECURITY, TEST_PLAN,
+                             DEPLOY, MAINTENANCE, CONVENTIONS (.md); báo cáo DOCX/PDF, slide, hình
 reports/                     báo cáo rà soát 01, phát triển 02, bộ khung 03
 .github/workflows/ci.yml     CI: lint → test → build Docker + kiểm tra sống
 pyproject.toml               gói, cấu hình pytest và ruff
@@ -128,7 +145,7 @@ không biến nào là bắt buộc.
 
 | Biến | Ý nghĩa |
 |---|---|
-| `EDGE_API_TOKEN` | Có giá trị: mọi lệnh POST (xác nhận/bỏ qua, đổi kịch bản) phải gửi header `X-API-Token`; dashboard sẽ hỏi mã một lần. **Không** có: lệnh POST chỉ được nhận từ chính máy chủ (127.0.0.1), máy khác chỉ xem được. Bắt buộc khi chạy Docker/Caddy. |
+| `EDGE_API_TOKEN` | Có giá trị: mọi lệnh POST (xác nhận/bỏ qua, đổi kịch bản) phải gửi header `X-API-Token`; dashboard sẽ hỏi mã một lần. **Không** có: lệnh POST chỉ được nhận từ chính máy chủ (127.0.0.1), máy khác chỉ xem được. Bắt buộc khi chạy Docker/Caddy. Sai mã 5 lần trong 5 phút thì IP đó bị khoá 5 phút. |
 | `EDGE_AUDIT_LOG` | Tệp nhật ký, mặc định `logs/audit.jsonl`. Kiểm tra chuỗi băm: `python -m edge_ai.api.audit_log logs/audit.jsonl` (chạy trong `backend/`) |
 | `EDGE_DATA_DIR`, `EDGE_MODELS_DIR`, `EDGE_RESULTS_DIR`, `EDGE_STATIC_DIR`, `EDGE_LOG_DIR` | Ghi đè đường dẫn (mặc định tính từ gốc repo) |
 | `EDGE_ALLOW_UNTRAINED` | `1` cho phép chạy khi thiếu trọng số (chỉ để thử luồng; dashboard hiện băng cảnh báo đỏ) |
@@ -269,6 +286,7 @@ và so với chính phép ngoại suy của EKF đó, mức cải thiện thật
 - Nhánh EO/IR mới mô hình hoá ở mức đầu ra, chưa chạy mô hình thị giác trên video thật.
 - Liên kết đa mục tiêu dùng GNN; chưa thử hai quỹ đạo cắt nhau trong cùng ô phân giải (cần JPDA/MHT).
 - Dashboard chưa có tài khoản riêng cho từng chuyên viên (chỉ một mã truy cập dùng chung).
+  Các rủi ro bảo mật còn lại: [docs/SECURITY.md](docs/SECURITY.md) mục 3.
 
 ---
 

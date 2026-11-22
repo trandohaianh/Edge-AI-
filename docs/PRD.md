@@ -4,7 +4,7 @@
 |---|---|
 | Sản phẩm | Hệ thống giám sát và bám quỹ đạo mục tiêu bay thấp bằng AI đa cảm biến tại thiết bị biên |
 | Loại | Khoá luận tốt nghiệp — Dự án 2 |
-| Phiên bản PRD | 1.2 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
+| Phiên bản PRD | 1.3 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
 | Ngày | 22/11/2026 |
 | Trạng thái dự án | Đã lập trình xong MVP (bước 6) trước khi có PRD. PRD này được **viết bù** để làm căn cứ nghiệm thu những gì đã có và giới hạn phạm vi các bước 7–10 |
 
@@ -167,10 +167,10 @@ nhất: *chưa làm / đã viết / đã chạy thử / đã kiểm thử đạt
 | A-8 | Dự đoán khi mất dấu tốt hơn ngoại suy đường thẳng | Sai số thấp hơn ≥ 10% trong quãng mất dấu 4 s | 18,3 m so với 26,9 m (thấp hơn 32%) | Đã kiểm thử đạt (mô phỏng) | `scenario_results.json` (S7) |
 | A-9 | Bám nhiều mục tiêu | Độ phủ ≥ 95%, đổi ID ≤ 1 mỗi lượt, vết giả ≤ 0,05/khung | Phủ 100%, đổi ID 0, vết giả ≤ 0,007 | Đã kiểm thử đạt (mô phỏng) | `mtt_results.json` |
 | A-10 | Mọi quyết định của người đều được ghi lại | Mỗi lần bấm sinh đúng 1 dòng nhật ký; còn nguyên sau khi khởi động lại; sửa/xoá dòng thì bị phát hiện | Đạt cả ba | Đã kiểm thử đạt | test `test_quyet_dinh_duoc_ghi_xuong_dia…`, `test_nhat_ky_chuoi_bam…`; thử Docker trong `reports/03` mục 10 |
-| A-11 | Không ai ngoài trạm thao tác được khi không có mã | POST từ máy khác bị từ chối (403/401) | Đạt | Đã kiểm thử đạt | test `test_khong_dat_ma…`, `test_ma_truy_cap…` |
+| A-11 | Không ai ngoài trạm thao tác được khi không có mã | POST từ máy khác bị từ chối (403/401) | Đạt; thêm 22/11: sai mã 5 lần thì khoá 5 phút (429), POST từ trang web khác bị từ chối (CSRF) | Đã kiểm thử đạt | test `test_khong_dat_ma…`, `test_ma_truy_cap…`, `test_sai_ma_nhieu_lan…`, `test_lenh_tu_trang_web_khac…`; `docs/SECURITY.md` |
 | A-12 | Không có chức năng tự động hành động | Không có API hay mã nào gửi lệnh ra ngoài hệ thống | Đạt (đã rà toàn bộ API: chỉ xem, xác nhận, bỏ qua, đổi kịch bản) | Đã kiểm tra | `README.md` mục API |
 | A-13 | Chạy được trên SoC 10–25 W | Khởi động được và A-1/A-2 đạt trên Jetson | Không có phần cứng | **Chưa làm — chấp nhận là giới hạn** (Q-2); phải ghi trong phần hạn chế của khoá luận | — |
-| A-14 | Dashboard dùng được trên màn hình máy tính trạm | Thao tác đủ F-10, F-11 không lỗi; báo rõ khi mất kết nối | Đạt trên Chrome máy tính | Đã chạy thử | Kiểm tra trên trình duyệt (`reports/02` mục 6) |
+| A-14 | Dashboard dùng được trên màn hình máy tính trạm | Thao tác đủ F-10, F-11 không lỗi; báo rõ khi mất kết nối | Kiểm thử đầu-cuối 22/11 trên Chromium: xác nhận, bỏ qua theo ID, đổi kịch bản đạt; mất kết nối nay làm mờ số liệu cũ, khoá nút, tự hồi phục (trước đó chưa đạt) | Đã kiểm thử đạt (thủ công có kịch bản) | `docs/TEST_PLAN.md` mục 3, `docs/UI.md` mục 3 |
 | A-15 | Cài đặt lại được từ đầu | Clone repo → làm theo README → dashboard chạy, test xanh | Đạt trên Windows; Docker build đạt | Đã chạy thử | `README.md`, CI |
 | A-16 | Sao lưu và khôi phục nhật ký (Q-5) | Sao lưu tự động hằng ngày; khôi phục bản sao lưu vào hệ thống mới thì chuỗi băm vẫn hợp lệ; tự dọn bản cũ hơn 12 tháng | Docker: dịch vụ `backup` tự sao lưu theo chu kỳ; xoá volume nhật ký rồi khôi phục thì băm cuối trùng trước khi mất (`3804b3e6…`) và ghi tiếp vẫn hợp lệ; khôi phục lần hai bị từ chối ghi đè; bản sao lưu bị sửa bị từ chối; dọn 12 tháng giữ được chuỗi | **Đã kiểm thử đạt** (test + chạy thật trong Docker 22/11/2026) | `backend/tests/test_audit_backup.py`, `backend/edge_ai/api/audit_backup.py` |
 | A-17 | Quyền đọc nhật ký (Q-5) | Trong Docker, tệp nhật ký chỉ user của dịch vụ đọc được; có hướng dẫn cấp quyền cho kỹ thuật viên và người kiểm tra | Thư mục `700`, tệp nhật ký và sao lưu `600`, chủ là `edge` (uid 10001) — kiểm bằng `ls -l` trong container; hướng dẫn đọc/kiểm tra ở README | **Đã kiểm thử đạt** | test `test_quyen_tep_nhat_ky_va_sao_luu_la_600` (chạy trong WSL), README mục “Sao lưu nhật ký” |
@@ -211,5 +211,6 @@ Cả hai **đã làm và kiểm thử đạt** ngày 22/11/2026, xem mục 9.
 | Phiên bản | Ngày | Nội dung |
 |---|---|---|
 | 1.0 | 22/11/2026 | Bản nháp đầu, viết bù sau khi đã có MVP. Tổng hợp từ đề bài (`docs/build/report.js` mục 1), `README.md` và các báo cáo `reports/01–03` |
-| 1.2 | 22/11/2026 | A-16 và A-17 đã kiểm thử đạt (test tự động + chạy thật trong Docker: sao lưu → mất dữ liệu → khôi phục) |
 | 1.1 | 22/11/2026 | Chủ dự án đồng ý toàn bộ đề xuất cho Q-2…Q-7. Chốt yêu cầu: bảo đảm 3 mục tiêu, mã chung, nhật ký giữ 12 tháng và sao lưu hằng ngày, không cần giao diện điện thoại, demo tại chỗ. Thêm tiêu chí A-16, A-17. Q-1 còn mở |
+| 1.2 | 22/11/2026 | A-16 và A-17 đã kiểm thử đạt (test tự động + chạy thật trong Docker: sao lưu → mất dữ liệu → khôi phục) |
+| 1.3 | 22/11/2026 | Bước 7–10: rà bảo mật (thêm chống dò mã, chống CSRF), kiểm thử đầu-cuối trên trình duyệt (sửa 4 lỗi), thêm tài liệu ARCHITECTURE, DATA, UI, SECURITY, TEST_PLAN, DEPLOY, MAINTENANCE. A-11, A-14 cập nhật |

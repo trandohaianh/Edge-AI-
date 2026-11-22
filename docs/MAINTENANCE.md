@@ -20,7 +20,7 @@
 | Ưu tiên | Việc | Lý do | Công sức ước lượng |
 |---|---|---|---|
 | **P1** | Đo trên Jetson Orin thật (`bench_edge`, `evaluate_mtt`) | Câu hỏi lớn nhất còn mở của đề tài (A-13) | 1 ngày nếu có máy |
-| **P1** | Push lên GitHub để CI chạy lần đầu | CI đã viết nhưng chưa chạy lần nào | 1 giờ khi có tên repo |
+| ~~**P1**~~ ✅ 22/11 | Push lên GitHub để CI chạy | Đã push nhánh `audit/danh-gia-phat-trien` lên `trandohaianh/Edge-AI-`; CI đạt cả 4 job | — |
 | ~~**P1**~~ ✅ 22/11 | Khoá phiên bản phụ thuộc (`pip-compile`) và thêm `pip-audit` vào CI | Bản dựng lặp lại được; biết khi thư viện có lỗ hổng (SECURITY R-4) | Nửa ngày |
 | **P1** | Sinh lại DOCX/PDF/slide theo số mới | Tài liệu nộp đang dùng số cũ | Chủ dự án làm |
 | ~~P2~~ ✅ 22/11 | Siết container: `read_only`, `cap_drop: ALL`, `no-new-privileges`; ghim digest ảnh | SECURITY R-5, R-7 | Nửa ngày + chạy thử Docker |

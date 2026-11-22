@@ -10,7 +10,7 @@
 |---|---|---|---|
 | Đơn vị + tích hợp (pytest) | `python -m pytest` | **79** | 78 đạt trên Windows, 1 bỏ qua (quyền tệp POSIX); bài đó đạt trong WSL |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
-| CI | GitHub Actions: lint → test → build Docker + gọi `/api/health` | 3 job | Đã viết; **chưa chạy trên GitHub** vì chưa push |
+| CI | GitHub Actions: lint → quét lỗ hổng → test → build Docker + gọi `/api/health` | 4 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
 | Đầu-cuối trên trình duyệt | Thủ công có kịch bản, mục 3 | 9 bước | Đạt sau khi sửa 4 lỗi |
 | Triển khai thật (Docker) | compose với project và cổng riêng | sao lưu → mất → khôi phục | Đạt (A-16) |
 | Hiệu năng | `experiments/evaluate*.py`, `bench_edge.py` | p99 / khung xấu nhất | Đạt trên x86 (A-1, A-2); **chưa đo trên Jetson** |
@@ -89,7 +89,6 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
 ## 4. Chưa kiểm thử (nói rõ để không hiểu nhầm)
 
 - Đo thời gian trên Jetson Orin (A-13, đã chấp nhận là giới hạn).
-- CI trên GitHub: chưa push nên chưa chạy lần nào (kể cả job `audit` mới).
 - `bash deploy/lock-deps.sh` ở chế độ sinh lại: tệp khoá hiện có được sinh
   bằng đúng các lệnh đó, nhưng chạy thẳng script này mới thử ở chế độ `audit`.
 - Trình duyệt ngoài Chromium (Firefox, Safari).

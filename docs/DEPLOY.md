@@ -105,7 +105,8 @@ Mỗi tuần: chép bản sao lưu ra ổ ngoài (lệnh ở README).
 ## 8. CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): lint → test → build Docker + gọi
-  `/api/health`. Đã viết, **chưa chạy** vì repo chưa push.
+  `/api/health`, cộng job quét lỗ hổng. Chạy trên mọi lần push; **đạt** lần
+  gần nhất ngày 22/11/2026 ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)).
 - **CD:** không tự động triển khai, có chủ đích. Máy trạm nằm trong mạng
   riêng, và cập nhật phải có người làm theo mục 4 và mục 6.
 

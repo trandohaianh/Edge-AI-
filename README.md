@@ -105,7 +105,7 @@ data/                        DỮ LIỆU
   models/                    trọng số .pt (commit, tổng < 1 MB)
   results/                   số đo .json mà báo cáo và dashboard đọc
 deploy/                      TRIỂN KHAI: Dockerfile, docker-compose.yml, Caddyfile (HTTPS)
-docs/                        CONVENTIONS.md, báo cáo DOCX/PDF, slide, hình, mã sinh báo cáo
+docs/                        PRD.md (yêu cầu sản phẩm), CONVENTIONS.md, báo cáo DOCX/PDF, slide, hình
 reports/                     báo cáo rà soát 01, phát triển 02, bộ khung 03
 .github/workflows/ci.yml     CI: lint → test → build Docker + kiểm tra sống
 pyproject.toml               gói, cấu hình pytest và ruff

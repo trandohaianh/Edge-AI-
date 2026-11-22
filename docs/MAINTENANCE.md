@@ -10,7 +10,8 @@
 | Hằng ngày | Kiểm 3 dịch vụ chạy, sao lưu "đã sao lưu", không có cảnh báo khoá mã | Kỹ thuật viên | DEPLOY mục 7 |
 | Hằng tuần | Chép bản sao lưu ra USB / ổ mạng | Kỹ thuật viên | README "Sao lưu nhật ký" |
 | Hằng tháng | Kiểm toàn bộ chuỗi băm; thử khôi phục một bản sao lưu vào thư mục tạm (`verify-snapshot`) | Người kiểm tra | DATA mục 4 |
-| Hằng tháng | Cập nhật ảnh nền (`python:3.12-slim`, `caddy`) và phụ thuộc Python, chạy lại 78 test, triển khai theo DEPLOY mục 4 | Người phát triển | DEPLOY mục 4–6 |
+| Hằng tháng | Quét lỗ hổng: `bash deploy/lock-deps.sh audit`. Có lỗ hổng thì nâng bản: `bash deploy/lock-deps.sh` | Người phát triển | SECURITY R-4 |
+| Hằng tháng | Cập nhật ảnh nền: lấy digest mới của `python:3.12-slim` và `caddy` (`docker pull …` rồi `docker inspect --format '{{index .RepoDigests 0}}' …`), sửa `deploy/Dockerfile` và `deploy/docker-compose.yml`, chạy lại test, triển khai theo DEPLOY mục 4 | Người phát triển | DEPLOY mục 4–6 |
 | Mỗi 3 tháng | Đổi `EDGE_API_TOKEN`; đổi ngay khi có người rời ca | Trưởng trạm | DEPLOY mục 2 |
 | Khi đổi mô hình | Chạy lại toàn bộ đánh giá, so số với PRD mục 9 trước khi thay trọng số | Người phát triển | README "Sinh lại toàn bộ số liệu" |
 
@@ -20,10 +21,10 @@
 |---|---|---|---|
 | **P1** | Đo trên Jetson Orin thật (`bench_edge`, `evaluate_mtt`) | Câu hỏi lớn nhất còn mở của đề tài (A-13) | 1 ngày nếu có máy |
 | **P1** | Push lên GitHub để CI chạy lần đầu | CI đã viết nhưng chưa chạy lần nào | 1 giờ khi có tên repo |
-| **P1** | Khoá phiên bản phụ thuộc (`pip-compile`) và thêm `pip-audit` vào CI | Bản dựng lặp lại được; biết khi thư viện có lỗ hổng (SECURITY R-4) | Nửa ngày |
+| ~~**P1**~~ ✅ 22/11 | Khoá phiên bản phụ thuộc (`pip-compile`) và thêm `pip-audit` vào CI | Bản dựng lặp lại được; biết khi thư viện có lỗ hổng (SECURITY R-4) | Nửa ngày |
 | **P1** | Sinh lại DOCX/PDF/slide theo số mới | Tài liệu nộp đang dùng số cũ | Chủ dự án làm |
-| P2 | Siết container: `read_only`, `cap_drop: ALL`, `no-new-privileges`; ghim digest ảnh | SECURITY R-5, R-7 | Nửa ngày + chạy thử Docker |
-| P2 | Tách JS khỏi `index.html`, bỏ `'unsafe-inline'` trong CSP | SECURITY R-3 | Nửa ngày |
+| ~~P2~~ ✅ 22/11 | Siết container: `read_only`, `cap_drop: ALL`, `no-new-privileges`; ghim digest ảnh | SECURITY R-5, R-7 | Nửa ngày + chạy thử Docker |
+| ~~P2~~ ✅ 22/11 | Tách JS khỏi `index.html`, bỏ `'unsafe-inline'` trong CSP | SECURITY R-3 | Nửa ngày |
 | P2 | Kiểm thử đầu-cuối tự động bằng Playwright, cho vào CI | Hiện E2E làm tay (TEST_PLAN mục 3) | 1 ngày |
 | P2 | Chạy liên tục 7 ngày: theo dõi bộ nhớ, sao lưu thật mỗi 24 h | Chưa thử chạy dài (TEST_PLAN mục 4) | 7 ngày chạy nền |
 | P2 | Xuất hai CNN sang ONNX Runtime / TensorRT FP16 nếu Jetson chậm | Hướng dự phòng cho A-2 với 6–10 mục tiêu | 2–3 ngày |

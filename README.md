@@ -80,7 +80,7 @@ pip install -r requirements-dev.txt
 python -m uvicorn edge_ai.api.server:app --app-dir backend --port 8099
 # mở http://localhost:8099
 
-python -m pytest            # 78 bài kiểm thử
+python -m pytest            # 79 bài kiểm thử
 ```
 
 Trọng số đã huấn luyện (< 1 MB) nằm sẵn trong `data/models/` nên dashboard
@@ -122,12 +122,14 @@ frontend/                    FRONTEND — dashboard tĩnh (HTML/CSS/JS thuần, 
 data/                        DỮ LIỆU
   models/                    trọng số .pt (commit, tổng < 1 MB)
   results/                   số đo .json mà báo cáo và dashboard đọc
-deploy/                      TRIỂN KHAI: Dockerfile, docker-compose.yml, Caddyfile (HTTPS)
+deploy/                      TRIỂN KHAI: Dockerfile, docker-compose.yml, Caddyfile (HTTPS),
+                             lock-deps.sh / audit-deps.sh (khoá phiên bản, quét lỗ hổng)
 docs/                        PRD.md (yêu cầu), ARCHITECTURE, DATA, UI, SECURITY, TEST_PLAN,
                              DEPLOY, MAINTENANCE, CONVENTIONS (.md); báo cáo DOCX/PDF, slide, hình
 reports/                     báo cáo rà soát 01, phát triển 02, bộ khung 03
 .github/workflows/ci.yml     CI: lint → test → build Docker + kiểm tra sống
 pyproject.toml               gói, cấu hình pytest và ruff
+requirements.txt             thư viện cần (ghi >=); requirements.lock: bản KHOÁ kèm SHA-256 mà Docker và CI cài
 .pre-commit-config.yaml      ruff, ruff-format, chặn tệp lớn và khoá riêng trước mỗi commit
 .env.example                 mẫu biến môi trường (không chứa bí mật)
 ```
@@ -224,8 +226,13 @@ pre-commit install               # một lần: tự chạy ruff + chặn tệp 
 pre-commit run --all-files
 ```
 
-CI (`.github/workflows/ci.yml`) chạy cùng các bước đó, rồi build ảnh Docker
-và gọi `/api/health` để kiểm tra container sống.
+CI (`.github/workflows/ci.yml`) chạy cùng các bước đó, quét lỗ hổng thư viện
+(`deploy/audit-deps.sh`), rồi build ảnh Docker và gọi `/api/health` để kiểm
+tra container sống.
+
+Thêm hoặc nâng thư viện: sửa `requirements.txt`, rồi chạy
+`bash deploy/lock-deps.sh` (cần Docker) để sinh lại `requirements.lock`. Không
+sửa tay tệp khoá.
 
 ## Sinh lại toàn bộ số liệu
 

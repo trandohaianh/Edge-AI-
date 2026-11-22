@@ -8,7 +8,7 @@
 
 | Loại | Cách chạy | Số lượng | Kết quả 22/11/2026 |
 |---|---|---|---|
-| Đơn vị + tích hợp (pytest) | `python -m pytest` | **78** | 77 đạt trên Windows, 1 bỏ qua (quyền tệp POSIX); bài đó đạt trong WSL |
+| Đơn vị + tích hợp (pytest) | `python -m pytest` | **79** | 78 đạt trên Windows, 1 bỏ qua (quyền tệp POSIX); bài đó đạt trong WSL |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
 | CI | GitHub Actions: lint → test → build Docker + gọi `/api/health` | 3 job | Đã viết; **chưa chạy trên GitHub** vì chưa push |
 | Đầu-cuối trên trình duyệt | Thủ công có kịch bản, mục 3 | 9 bước | Đạt sau khi sửa 4 lỗi |
@@ -21,7 +21,7 @@
 |---|---|---|
 | Lõi thuật toán | `test_core.py` (20) | Mô phỏng vật lý, EKF, hợp nhất, mâu thuẫn cảm biến |
 | Bám nhiều mục tiêu | `test_mtt.py` (13) | GNN, cổng χ², M-of-N, không đổi ID, vết giả, trần mạng nặng |
-| Pipeline + máy chủ | `test_pipeline_server.py` (32) | Nạp mô hình an toàn, mất dấu, API, xác thực, chống dò mã, CSRF, header, nhật ký, quy tắc phụ thuộc |
+| Pipeline + máy chủ | `test_pipeline_server.py` (33) | Nạp mô hình an toàn, mất dấu, API, xác thực, chống dò mã, CSRF, CSP, header, nhật ký, quy tắc phụ thuộc |
 | Nhật ký + sao lưu | `test_audit_backup.py` (13) | Chia tháng, sao lưu/khôi phục, dọn 12 tháng, quyền 600, dòng lệnh tiếng Việt |
 
 **Đối chiếu với các loại kiểm thử của quy trình:**
@@ -66,10 +66,32 @@ Chạy trên trình duyệt Chromium tích hợp, máy chủ cục bộ, nhật 
 **Lưu ý vận hành từ L-3:** trình duyệt nào đã lưu bản cũ trước bản sửa thì
 cần nhấn **Ctrl+F5** một lần.
 
+### Chạy thật trong Docker sau khi siết (22/11/2026)
+
+Ảnh dựng từ `requirements.lock` (pip kiểm SHA-256 từng gói), chạy compose
+với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `down -v`.
+
+| # | Kiểm | Kết quả |
+|---|---|---|
+| K-1 | `/api/health` qua HTTPS | `ok: true`, đủ trọng số, `auth_required: true` |
+| K-2 | Header qua Caddy | CSP không có `'unsafe-inline'` cho script; HSTS; `no-cache` cho trang |
+| K-3 | POST có mã, Origin đúng trang / trang lạ | 200 / **403** |
+| K-4 | Sai mã 5 lần rồi gửi mã đúng; thử giả `X-Forwarded-For` | 401×5 rồi **429**; giả IP vẫn **429** |
+| K-5 | Siết container | 3 dịch vụ `ReadonlyRootfs=true`, `CapDrop=ALL`, `no-new-privileges`; trong `app`: ghi `/app` bị từ chối, `CapEff=0` |
+| K-6 | Sao lưu và quyền | "đã sao lưu" mỗi 15 s; tệp `600`; thư mục bản sao lưu `700` (**lỗi L-5 → đã sửa**) |
+| K-7 | Log | Caddy báo lỗi cài CA vào hệ thống (**L-6 → đã sửa** bằng `skip_install_trust`); sau sửa: 0 lỗi |
+
+| # | Lỗi | Sửa | Test |
+|---|---|---|---|
+| L-5 | Thư mục của từng bản sao lưu có quyền `755` (tệp bên trong vẫn `600`) | `chmod 700` khi tạo | `test_quyen_tep_nhat_ky_va_sao_luu_la_600` (thêm kiểm thư mục) |
+| L-6 | Caddy cố cài chứng chỉ gốc vào hệ điều hành của container, ghi lỗi mỗi lần chạy | `skip_install_trust` trong `Caddyfile` | Chạy thật: 0 lỗi |
+
 ## 4. Chưa kiểm thử (nói rõ để không hiểu nhầm)
 
 - Đo thời gian trên Jetson Orin (A-13, đã chấp nhận là giới hạn).
-- CI trên GitHub: chưa push nên chưa chạy lần nào.
+- CI trên GitHub: chưa push nên chưa chạy lần nào (kể cả job `audit` mới).
+- `bash deploy/lock-deps.sh` ở chế độ sinh lại: tệp khoá hiện có được sinh
+  bằng đúng các lệnh đó, nhưng chạy thẳng script này mới thử ở chế độ `audit`.
 - Trình duyệt ngoài Chromium (Firefox, Safari).
 - Dashboard ở chế độ có mã truy cập trên trình duyệt thật: luồng hỏi mã dùng
   `prompt()`, mới kiểm qua API.
@@ -81,7 +103,7 @@ cần nhấn **Ctrl+F5** một lần.
 ## 5. Cách chạy lại
 
 ```bash
-python -m pytest                              # 78 test, ~4 phút trên laptop
+python -m pytest                              # 79 test, ~4 phút trên laptop
 pre-commit run --all-files                    # lint
 python -m edge_ai.experiments.evaluate_mtt    # trong backend/: hiệu năng nhiều mục tiêu
 ```

@@ -29,7 +29,7 @@
 | S-4 | **Chống dò mã:** sai 5 lần trong 5 phút thì khoá IP đó 5 phút (cả mã đúng cũng bị từ chối); IP khác không bị ảnh hưởng | ✅ Có test (mới, 22/11) | `api/auth.py`, `test_sai_ma_nhieu_lan_thi_bi_khoa_tam`, `test_bo_chan_do_ma_het_han_va_xoa_khi_dung` |
 | S-5 | **Chống CSRF:** POST từ trang web khác (Origin ≠ Host) bị từ chối | ✅ Có test (mới, 22/11) | `test_lenh_tu_trang_web_khac_bi_tu_choi`; đã thử trình duyệt thật vẫn bấm được |
 | S-6 | Kiểm tra đầu vào: hành động chỉ 2 giá trị, mã ca giới hạn ký tự và độ dài, ID trong khoảng | ✅ Có test | `test_dau_vao_sai_bi_tu_choi` |
-| S-7 | Chống XSS: mọi chuỗi từ máy chủ được thoát (`esc`) trước khi chèn HTML; CSP `default-src 'self'` | ✅ một phần | Xem R-3 |
+| S-7 | Chống XSS: mọi chuỗi từ máy chủ được thoát (`esc`) trước khi chèn HTML; CSP `default-src 'self'` | ✅ | Thêm CSP chặn script chèn vào trang (S-18) |
 | S-8 | Header bảo mật: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, CSP, HSTS (Caddy), `no-store` cho API | ✅ Có test | `test_kich_ban_metrics_header_va_health` |
 | S-9 | HTTPS: Caddy tự lo chứng chỉ; cổng ứng dụng không mở ra ngoài | ✅ Đã chạy thật | `deploy/`, báo cáo 03 mục 10 |
 | S-10 | Chạy bằng user không phải root (uid 10001) | ✅ Đã chạy thật | `deploy/Dockerfile` |
@@ -40,6 +40,10 @@
 | S-15 | Không có chức năng điều khiển khí tài / gửi lệnh ra ngoài | ✅ | PRD A-12; toàn bộ API ở README |
 | S-16 | Mã truy cập trên trình duyệt chỉ giữ trong `sessionStorage` của tab, không đưa lên URL | ✅ | `frontend/index.html`, hàm `token()` |
 | S-17 | CI chỉ có quyền đọc repo | ✅ | `ci.yml`: `permissions: contents: read` |
+| S-18 | **CSP không cho chạy script chèn vào trang** (JS tách ra `/static/app.js`, bỏ `'unsafe-inline'` cho script) — trước đây là rủi ro R-3 | ✅ Có test + trình duyệt (22/11) | `test_csp_khong_cho_chay_script_chen_vao_trang`; Chromium chặn script chèn thử |
+| S-19 | **Khoá phiên bản thư viện kèm SHA-256** (`requirements.lock`); Docker và CI cài đúng bản đó; **quét lỗ hổng** bằng `pip-audit --strict` (kể cả torch) trong CI — trước đây là R-4 | ✅ Quét 22/11: 25 gói, không có lỗ hổng đã biết | `deploy/lock-deps.sh`, `deploy/audit-deps.sh`, job `audit` trong CI |
+| S-20 | **Ảnh gốc ghim theo digest**: `python:3.12-slim@sha256:5e2b…`, `caddy:2.10.2-alpine@sha256:4c6e…` (nâng từ 2.8 đã 2 năm tuổi) — trước đây là R-5 | ✅ Đã chạy thật | `deploy/Dockerfile`, `deploy/docker-compose.yml` |
+| S-21 | **Siết container**: hệ tệp chỉ đọc, `cap_drop: ALL` (Caddy chỉ giữ `NET_BIND_SERVICE`), `no-new-privileges` — trước đây là R-7 | ✅ Đã chạy thật (22/11) | Trong container: ghi `/app` bị từ chối, `CapEff=0`, `NoNewPrivs=1`; dashboard, sao lưu, HTTPS vẫn chạy |
 
 ## 3. Rủi ro còn lại (chấp nhận hoặc để sau)
 
@@ -47,15 +51,11 @@
 |---|---|---|---|---|
 | R-1 | **Mã dùng chung** cho cả ca: không biết ai bấm. Mã ca ghi vào nhật ký do giao diện tự điền, không phải bằng chứng danh tính | Trung bình | Chủ dự án chốt (Q-3) | Tài khoản riêng (L-3) |
 | R-2 | **Ai trong mạng trạm cũng xem được** dashboard và 12 quyết định gần nhất (GET không cần mã) | Thấp | Thiết kế: màn hình xem để ở phòng trực | Bắt buộc mã cho cả GET nếu mạng trạm không tin cậy |
-| R-3 | CSP vẫn cho `script-src 'unsafe-inline'` (JS viết trong `index.html`) | Thấp | Đã thoát mọi dữ liệu chèn HTML; tách tệp JS cần sửa giao diện | Tách JS ra `app.js`, bỏ `'unsafe-inline'` |
-| R-4 | Phụ thuộc Python ghi `>=`, chưa khoá phiên bản; chưa quét lỗ hổng (`pip-audit`) | Trung bình | Cần tải công cụ; chưa có lịch bảo trì | `pip-compile` ra tệp khoá, thêm `pip-audit` vào CI (MAINTENANCE.md) |
-| R-5 | Ảnh `caddy:2.8-alpine` gắn theo tag, không theo digest | Thấp | Đơn giản cho người vận hành | Ghim `@sha256:…`, cập nhật có chủ đích |
 | R-6 | Không giới hạn tần suất chung cho mọi request (chỉ chặn dò mã) | Thấp | Mạng nội bộ, một trạm | `rate_limit` ở Caddy hoặc tường lửa |
-| R-7 | Container chưa `read_only`, chưa `cap_drop: ALL`, chưa `no-new-privileges` | Thấp | Cần chạy thử Docker lại | Thêm 3 dòng vào compose, thử lại |
 | R-8 | Xoá **cả đuôi** nhật ký (các dòng mới nhất) chỉ phát hiện được nhờ so với bản sao lưu | Trung bình | Bản chất của chuỗi băm | Chép băm mới nhất ra nơi khác thường xuyên hơn |
 | R-9 | Bản sao lưu nằm **cùng ổ đĩa** với máy trạm | Trung bình | Không có ổ thứ hai | Kỹ thuật viên chép ra USB hoặc ổ mạng (README) |
 | R-10 | Bộ đếm chống dò mã nằm trong RAM: khởi động lại `app` là xoá | Thấp | Khởi động lại cần quyền Docker, đã nằm ngoài phạm vi | — |
-| R-11 | Ảnh Docker tin header `X-Forwarded-For` từ mọi nguồn (để đọc IP thật qua Caddy). Nếu chạy **ảnh đó mà không có Caddy** (`docker run -p 8099:8099`, mục cuối "Triển khai có HTTPS" của README), người trong mạng có thể giả IP để né khoá dò mã (S-4) | Thấp–Trung bình | Cấu hình chuẩn là compose: 8099 không mở ra ngoài, Caddy ghi đè header này | Chỉ dùng `docker run -p` để thử trên máy; hoặc đổi `--forwarded-allow-ips` thành IP của Caddy |
+| R-11 | (Đã thử qua Caddy 22/11: gửi `X-Forwarded-For` giả **không** né được khoá — Caddy bỏ header đó.) Ảnh Docker tin header `X-Forwarded-For` từ mọi nguồn (để đọc IP thật qua Caddy). Nếu chạy **ảnh đó mà không có Caddy** (`docker run -p 8099:8099`, mục cuối "Triển khai có HTTPS" của README), người trong mạng có thể giả IP để né khoá dò mã (S-4) | Thấp–Trung bình | Cấu hình chuẩn là compose: 8099 không mở ra ngoài, Caddy ghi đè header này | Chỉ dùng `docker run -p` để thử trên máy; hoặc đổi `--forwarded-allow-ips` thành IP của Caddy |
 
 ## 4. Dữ liệu cá nhân (pháp luật Việt Nam)
 

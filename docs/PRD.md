@@ -4,7 +4,7 @@
 |---|---|
 | Sản phẩm | Hệ thống giám sát và bám quỹ đạo mục tiêu bay thấp bằng AI đa cảm biến tại thiết bị biên |
 | Loại | Khoá luận tốt nghiệp — Dự án 2 |
-| Phiên bản PRD | 1.3 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
+| Phiên bản PRD | 1.4 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
 | Ngày | 22/11/2026 |
 | Trạng thái dự án | Đã lập trình xong MVP (bước 6) trước khi có PRD. PRD này được **viết bù** để làm căn cứ nghiệm thu những gì đã có và giới hạn phạm vi các bước 7–10 |
 
@@ -214,3 +214,4 @@ Cả hai **đã làm và kiểm thử đạt** ngày 22/11/2026, xem mục 9.
 | 1.1 | 22/11/2026 | Chủ dự án đồng ý toàn bộ đề xuất cho Q-2…Q-7. Chốt yêu cầu: bảo đảm 3 mục tiêu, mã chung, nhật ký giữ 12 tháng và sao lưu hằng ngày, không cần giao diện điện thoại, demo tại chỗ. Thêm tiêu chí A-16, A-17. Q-1 còn mở |
 | 1.2 | 22/11/2026 | A-16 và A-17 đã kiểm thử đạt (test tự động + chạy thật trong Docker: sao lưu → mất dữ liệu → khôi phục) |
 | 1.3 | 22/11/2026 | Bước 7–10: rà bảo mật (thêm chống dò mã, chống CSRF), kiểm thử đầu-cuối trên trình duyệt (sửa 4 lỗi), thêm tài liệu ARCHITECTURE, DATA, UI, SECURITY, TEST_PLAN, DEPLOY, MAINTENANCE. A-11, A-14 cập nhật |
+| 1.4 | 22/11/2026 | Bảo trì: khoá phiên bản thư viện + quét lỗ hổng, siết container, ghim digest ảnh, CSP không còn `'unsafe-inline'` cho script (SECURITY S-18…S-21); chạy thật trong Docker đạt |

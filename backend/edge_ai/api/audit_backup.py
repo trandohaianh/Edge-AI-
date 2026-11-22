@@ -28,6 +28,7 @@ hoặc ổ mạng (README, mục “Sao lưu nhật ký”).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import logging
@@ -74,6 +75,10 @@ def backup(log_base: Path, dest: Path, now: float | None = None) -> Path:
     if tmp.exists():
         shutil.rmtree(tmp)
     tmp.mkdir(parents=True)
+    # Thư mục bản sao lưu cũng chỉ user dịch vụ vào được (PRD A-17); thiếu
+    # dòng này thì nó là 755 theo umask — tìm thấy khi chạy thử Docker.
+    with contextlib.suppress(OSError):
+        tmp.chmod(0o700)
     copied = []
     for f in files + ([store.pruned_path] if store.pruned_path.exists() else []):
         target = tmp / f.name

@@ -156,6 +156,7 @@ def test_quyen_tep_nhat_ky_va_sao_luu_la_600(tmp_path):
     snap = AB.backup(log, tmp_path / "b", now=_ts(2026, 11, 20))
     for p in [*store.files(), *snap.iterdir()]:
         assert oct(os.stat(p).st_mode & 0o777) == "0o600", p
+    assert oct(os.stat(snap).st_mode & 0o777) == "0o700"
 
 
 def test_lenh_dong_lenh(tmp_path, capsys):

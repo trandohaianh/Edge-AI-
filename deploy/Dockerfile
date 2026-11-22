@@ -2,7 +2,9 @@
 # Build từ GỐC repo:   docker build -f deploy/Dockerfile -t edge-ai .
 # Trên Jetson: thay ảnh gốc bằng l4t-pytorch của NVIDIA đúng bản JetPack để
 # torch dùng được GPU (xem reports/02, mục 7).
-FROM python:3.12-slim
+# Ghim theo digest để bản dựng lặp lại được (SECURITY R-5); cập nhật hằng
+# tháng theo docs/MAINTENANCE.md.
+FROM python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -16,10 +18,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Tầng phụ thuộc tách riêng để đổi mã không phải cài lại torch.
-COPY requirements.txt .
-# torch bản CPU từ kho chính thức của PyTorch: nhẹ hơn nhiều so với bản CUDA.
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch>=2.2" \
- && pip install --no-cache-dir -r requirements.txt
+# Cài ĐÚNG các phiên bản trong requirements.lock, kiểm SHA-256 từng gói
+# (SECURITY R-4). torch bản CPU từ kho của PyTorch, còn lại từ PyPI.
+COPY requirements.lock .
+RUN pip install --no-cache-dir --require-hashes \
+      --index-url https://download.pytorch.org/whl/cpu \
+      --extra-index-url https://pypi.org/simple \
+      -r requirements.lock
 
 COPY backend/edge_ai/ backend/edge_ai/
 COPY frontend/ frontend/

@@ -20,6 +20,17 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
 
+  audit:
+    # Lỗ hổng đã biết trong các thư viện chạy trên trạm (SECURITY R-4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "pip-audit==2.7.3"
+      - run: bash deploy/audit-deps.sh
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -28,8 +39,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      # torch bản CPU: nhẹ hơn nhiều so với bản CUDA mặc định
-      - run: pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      # Đúng các phiên bản đã khoá (torch bản CPU), rồi thêm công cụ dev
+      - run: >-
+          pip install --require-hashes -r requirements.lock
+          --index-url https://download.pytorch.org/whl/cpu
+          --extra-index-url https://pypi.org/simple
       - run: pip install -e ".[dev,figures]"
       - run: python -m pytest
 

@@ -5,13 +5,19 @@
 # EDGE_DOMAIN=ten-mien-that.vn: Caddy tự xin chứng chỉ Let's Encrypt và tự gia
 #   hạn (cần DNS trỏ về máy và mở cổng 80/443).
 #
-# Muốn nhận thư báo hết hạn chứng chỉ từ Let's Encrypt thì thêm khối toàn cục
-# ở đầu tệp:   {
-#                  email ban@ten-mien.vn
-#              }
+# Muốn nhận thư báo hết hạn chứng chỉ từ Let's Encrypt thì thêm dòng
+#     email ban@ten-mien.vn
+# vào khối toàn cục { … } ngay dưới đây.
 # (Không dùng biến môi trường cho email: compose truyền chuỗi RỖNG khi biến
 # không được đặt, Caddy nhận "email" không đối số và không khởi động được —
 # lỗi bắt được khi build thử thật.)
+
+{
+	# Trong container không có kho chứng chỉ hệ thống để cài CA nội bộ vào
+	# (hệ tệp lại chỉ đọc): bỏ bước đó, nếu không Caddy ghi lỗi mỗi lần chạy.
+	# Trình duyệt vẫn cảnh báo chứng chỉ tự ký khi EDGE_DOMAIN=localhost.
+	skip_install_trust
+}
 
 {$EDGE_DOMAIN:localhost} {
 	encode zstd gzip

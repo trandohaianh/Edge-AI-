@@ -22,11 +22,12 @@ lý phải xong trong ngân sách 50 ms của đề bài.
 3. [Cấu trúc thư mục](#cấu-trúc-thư-mục)
 4. [Cấu hình](#cấu-hình)
 5. [Triển khai có HTTPS](#triển-khai-có-https)
-6. [Phát triển: test, lint, format](#phát-triển-test-lint-format)
-7. [Sinh lại toàn bộ số liệu](#sinh-lại-toàn-bộ-số-liệu)
-8. [API](#api)
-9. [Ba lỗi phương pháp đã tìm ra và sửa](#ba-lỗi-phương-pháp-đã-tìm-ra-và-sửa)
-10. [Hạn chế](#hạn-chế)
+6. [Sao lưu nhật ký](#sao-lưu-nhật-ký)
+7. [Phát triển: test, lint, format](#phát-triển-test-lint-format)
+8. [Sinh lại toàn bộ số liệu](#sinh-lại-toàn-bộ-số-liệu)
+9. [API](#api)
+10. [Ba lỗi phương pháp đã tìm ra và sửa](#ba-lỗi-phương-pháp-đã-tìm-ra-và-sửa)
+11. [Hạn chế](#hạn-chế)
 
 ## Kết quả đo được
 
@@ -64,7 +65,7 @@ pip install -r requirements-dev.txt
 python -m uvicorn edge_ai.api.server:app --app-dir backend --port 8099
 # mở http://localhost:8099
 
-python -m pytest            # 59 bài kiểm thử
+python -m pytest            # 73 bài kiểm thử
 ```
 
 Trọng số đã huấn luyện (< 1 MB) nằm sẵn trong `data/models/` nên dashboard
@@ -93,7 +94,8 @@ backend/                     BACKEND — Python, gói "edge_ai"
       mtt.py                   NHIỀU mục tiêu: GNN + cổng χ², M-of-N, trần mạng nặng mỗi khung
     api/                     máy chủ
       server.py                FastAPI: dashboard, /api/*, xác thực, header bảo mật
-      audit_log.py             nhật ký quyết định chuỗi băm SHA-256 + công cụ kiểm tra
+      audit_log.py             nhật ký quyết định chuỗi băm SHA-256, chia theo tháng + công cụ kiểm tra
+      audit_backup.py          sao lưu / khôi phục / dọn 12 tháng
     experiments/             đánh giá (không chạy trên trạm)
       evaluate.py, evaluate_mtt.py, adversarial.py, bench_edge.py, figures.py
     training/                huấn luyện (offline)
@@ -156,6 +158,44 @@ docker compose -f deploy/docker-compose.yml logs -f
 
 Chỉ chạy container, không Caddy:
 `docker build -f deploy/Dockerfile -t edge-ai . && docker run -p 8099:8099 -e EDGE_API_TOKEN=<mã> edge-ai`.
+
+## Sao lưu nhật ký
+
+Nhật ký quyết định được chia theo tháng (`audit-YYYY-MM.jsonl`), nối chuỗi
+băm SHA-256 qua các tháng, và **giữ 12 tháng** (PRD Q-5). Khi chạy bằng
+compose, dịch vụ `backup` tự làm hai việc mỗi ngày:
+- dọn các tháng quá hạn;
+- sao lưu vào volume `edge-backups`, hoặc vào thư mục `EDGE_BACKUP_DIR` nếu
+  được đặt.
+
+Mỗi bản sao lưu là một thư mục theo ngày, kèm `MANIFEST.json` ghi SHA-256
+của từng tệp.
+
+```bash
+# kiểm tra nhật ký đang dùng
+docker compose -p edge-ai -f deploy/docker-compose.yml exec app \
+  python -m edge_ai.api.audit_log /var/lib/edge/audit.jsonl
+# xem các bản sao lưu
+docker compose -p edge-ai -f deploy/docker-compose.yml exec backup ls -l /backups
+# khôi phục: DỪNG app trước (nếu không, app vẫn giữ băm cũ trong bộ nhớ và ghi đứt chuỗi)
+docker compose -p edge-ai -f deploy/docker-compose.yml stop app
+docker compose -p edge-ai -f deploy/docker-compose.yml run --rm --no-deps backup \
+  python -m edge_ai.api.audit_backup restore --snapshot /backups/2026-11-22 \
+  --log /var/lib/edge/audit.jsonl          # thêm --force nếu chắc chắn muốn ghi đè
+docker compose -p edge-ai -f deploy/docker-compose.yml start app
+```
+
+- Khôi phục **từ chối** bản sao lưu đã bị sửa, và từ chối ghi đè nhật ký
+  đang có nếu không có `--force`.
+- Tệp nhật ký và sao lưu có quyền `600`, thư mục `700`, chủ là user `edge`
+  (uid 10001). Kỹ thuật viên và người kiểm tra đọc qua `docker compose exec`
+  như trên, nên không cần mở quyền cho ai khác.
+- **Bản sao lưu nằm trên cùng ổ đĩa với máy trạm.** Hãy định kỳ chép ra USB
+  hoặc ổ mạng, ví dụ:
+  `docker run --rm -v edge-ai_edge-backups:/b -v /media/usb:/out alpine cp -a /b/. /out/`
+- Trên Windows (Git Bash), đặt `MSYS_NO_PATHCONV=1` trước các lệnh có đường
+  dẫn kiểu `/var/lib/...`, nếu không Git Bash sẽ tự đổi chúng thành đường dẫn
+  Windows.
 
 ## Phát triển: test, lint, format
 

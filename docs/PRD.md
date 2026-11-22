@@ -4,7 +4,7 @@
 |---|---|
 | Sản phẩm | Hệ thống giám sát và bám quỹ đạo mục tiêu bay thấp bằng AI đa cảm biến tại thiết bị biên |
 | Loại | Khoá luận tốt nghiệp — Dự án 2 |
-| Phiên bản PRD | 1.1 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
+| Phiên bản PRD | 1.2 — **đã chốt yêu cầu**: chủ dự án đồng ý toàn bộ đề xuất ở mục 11 ngày 22/11/2026. Riêng Q-1 (thời hạn) vẫn còn mở |
 | Ngày | 22/11/2026 |
 | Trạng thái dự án | Đã lập trình xong MVP (bước 6) trước khi có PRD. PRD này được **viết bù** để làm căn cứ nghiệm thu những gì đã có và giới hạn phạm vi các bước 7–10 |
 
@@ -128,7 +128,12 @@ Mã `F-x` dùng để đối chiếu với tiêu chí nghiệm thu ở mục 9.
 - **Chỉ kỹ thuật viên và người kiểm tra** được đọc tệp. Chuyên viên trực chỉ
   thấy 12 quyết định gần nhất trên dashboard.
 - **Sao lưu hằng ngày**, và phải thử khôi phục được (tiêu chí A-16, A-17 —
-  hiện **chưa làm**, thuộc bước 7 và 9).
+  **đã làm và kiểm thử đạt** ngày 22/11/2026).
+- Bản sao lưu nằm trên cùng ổ đĩa với máy trạm: chống được lỡ tay xoá hoặc
+  tệp hỏng, **không** chống được hỏng cả ổ. Kỹ thuật viên cần định kỳ chép ra
+  USB hoặc ổ mạng (README).
+- Không đặt quy định nào thì dữ liệu chỉ được giữ bằng cách chia nhật ký
+  theo tháng và xoá nguyên tháng; chuỗi băm vẫn kiểm được sau mỗi lần dọn.
 
 ## 8. Quy mô, ngân sách, thời gian
 
@@ -167,8 +172,8 @@ nhất: *chưa làm / đã viết / đã chạy thử / đã kiểm thử đạt
 | A-13 | Chạy được trên SoC 10–25 W | Khởi động được và A-1/A-2 đạt trên Jetson | Không có phần cứng | **Chưa làm — chấp nhận là giới hạn** (Q-2); phải ghi trong phần hạn chế của khoá luận | — |
 | A-14 | Dashboard dùng được trên màn hình máy tính trạm | Thao tác đủ F-10, F-11 không lỗi; báo rõ khi mất kết nối | Đạt trên Chrome máy tính | Đã chạy thử | Kiểm tra trên trình duyệt (`reports/02` mục 6) |
 | A-15 | Cài đặt lại được từ đầu | Clone repo → làm theo README → dashboard chạy, test xanh | Đạt trên Windows; Docker build đạt | Đã chạy thử | `README.md`, CI |
-| A-16 | Sao lưu và khôi phục nhật ký (Q-5) | Sao lưu tự động hằng ngày; khôi phục bản sao lưu vào hệ thống mới thì chuỗi băm vẫn hợp lệ; tự dọn bản cũ hơn 12 tháng | — | **Chưa làm** (bước 7, 9) | — |
-| A-17 | Quyền đọc nhật ký (Q-5) | Trong Docker, tệp nhật ký chỉ user của dịch vụ đọc được; có hướng dẫn cấp quyền cho kỹ thuật viên và người kiểm tra | Container đã chạy bằng user riêng (uid 10001) | Một phần | `reports/03` mục 10 |
+| A-16 | Sao lưu và khôi phục nhật ký (Q-5) | Sao lưu tự động hằng ngày; khôi phục bản sao lưu vào hệ thống mới thì chuỗi băm vẫn hợp lệ; tự dọn bản cũ hơn 12 tháng | Docker: dịch vụ `backup` tự sao lưu theo chu kỳ; xoá volume nhật ký rồi khôi phục thì băm cuối trùng trước khi mất (`3804b3e6…`) và ghi tiếp vẫn hợp lệ; khôi phục lần hai bị từ chối ghi đè; bản sao lưu bị sửa bị từ chối; dọn 12 tháng giữ được chuỗi | **Đã kiểm thử đạt** (test + chạy thật trong Docker 22/11/2026) | `backend/tests/test_audit_backup.py`, `backend/edge_ai/api/audit_backup.py` |
+| A-17 | Quyền đọc nhật ký (Q-5) | Trong Docker, tệp nhật ký chỉ user của dịch vụ đọc được; có hướng dẫn cấp quyền cho kỹ thuật viên và người kiểm tra | Thư mục `700`, tệp nhật ký và sao lưu `600`, chủ là `edge` (uid 10001) — kiểm bằng `ls -l` trong container; hướng dẫn đọc/kiểm tra ở README | **Đã kiểm thử đạt** | test `test_quyen_tep_nhat_ky_va_sao_luu_la_600` (chạy trong WSL), README mục “Sao lưu nhật ký” |
 
 ## 10. Giả định
 
@@ -195,16 +200,16 @@ Ngày 22/11/2026 chủ dự án **đồng ý toàn bộ đề xuất** ở bản
 | Q-6 | Cần dùng trên điện thoại không? | Không | Giả định 3, A-14 |
 | Q-7 | Cần địa chỉ demo công khai không? | Không, demo tại chỗ bằng Docker | Giả định 5 |
 
-**Hệ quả:** các quyết định này sinh thêm hai yêu cầu chưa làm, cả hai có
-nguồn từ Q-5:
+**Hệ quả:** các quyết định này sinh thêm hai yêu cầu, cả hai có nguồn từ Q-5:
 - A-16: sao lưu và khôi phục nhật ký.
-- A-17 (phần còn thiếu): quyền đọc tệp nhật ký.
+- A-17: quyền đọc tệp nhật ký.
 
-Đây là các việc cần làm tiếp ở bước 7 (bảo mật) và bước 9 (triển khai).
+Cả hai **đã làm và kiểm thử đạt** ngày 22/11/2026, xem mục 9.
 
 ## 12. Lịch sử thay đổi
 
 | Phiên bản | Ngày | Nội dung |
 |---|---|---|
 | 1.0 | 22/11/2026 | Bản nháp đầu, viết bù sau khi đã có MVP. Tổng hợp từ đề bài (`docs/build/report.js` mục 1), `README.md` và các báo cáo `reports/01–03` |
+| 1.2 | 22/11/2026 | A-16 và A-17 đã kiểm thử đạt (test tự động + chạy thật trong Docker: sao lưu → mất dữ liệu → khôi phục) |
 | 1.1 | 22/11/2026 | Chủ dự án đồng ý toàn bộ đề xuất cho Q-2…Q-7. Chốt yêu cầu: bảo đảm 3 mục tiêu, mã chung, nhật ký giữ 12 tháng và sao lưu hằng ngày, không cần giao diện điện thoại, demo tại chỗ. Thêm tiêu chí A-16, A-17. Q-1 còn mở |

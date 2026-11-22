@@ -39,6 +39,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from edge_ai.api import audit_log
+from edge_ai.api.auth import FailureLimiter
 from edge_ai.config import FRAME_DT, LOG_DIR, RESULTS_DIR, STATIC_DIR
 from edge_ai.sim.scenarios import build_targets, fan_targets
 from edge_ai.sim.scene import Weather, make_scenario, sense
@@ -406,6 +407,11 @@ async def security_headers(request: Request, call_next):
     )
     if request.url.path.startswith("/api/"):
         resp.headers.setdefault("Cache-Control", "no-store")
+    elif request.url.path == "/":
+        # Trang dashboard phải luôn hỏi lại máy chủ: nếu không, sau khi cập
+        # nhật, trình duyệt có thể dùng bản giao diện cũ đã lưu đệm (lỗi tìm
+        # thấy khi kiểm thử đầu-cuối, bước 8).
+        resp.headers.setdefault("Cache-Control", "no-cache")
     return resp
 
 
@@ -416,6 +422,7 @@ def engine() -> Engine:
 
 
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+TOKEN_LIMITER = FailureLimiter()
 
 
 def require_token(request: Request, x_api_token: str | None = Header(default=None)):
@@ -427,13 +434,25 @@ def require_token(request: Request, x_api_token: str | None = Header(default=Non
       khác trong mạng KHÔNG thể ghi quyết định hay đổi kịch bản.
     """
     want = os.environ.get("EDGE_API_TOKEN")
+    host = request.client.host if request.client else ""
     if not want:
-        host = request.client.host if request.client else ""
         if host not in LOOPBACK:
             raise HTTPException(403, "điều khiển từ máy khác cần đặt EDGE_API_TOKEN trên máy chủ")
         return
+    # Chống dò mã: bị khoá thì từ chối cả mã đúng (auth.py).
+    wait = TOKEN_LIMITER.retry_after(host)
+    if wait:
+        raise HTTPException(
+            429,
+            f"sai mã quá nhiều lần, thử lại sau {wait} giây",
+            headers={"Retry-After": str(wait)},
+        )
     if not x_api_token or not hmac.compare_digest(x_api_token.encode(), want.encode()):
+        # Không gửi mã (lần đầu mở trang) không tính là sai; gửi mã sai mới tính.
+        if x_api_token and TOKEN_LIMITER.failure(host):
+            log.warning("khoá %s vì sai mã truy cập nhiều lần", host)
         raise HTTPException(401, "thiếu hoặc sai mã truy cập (X-API-Token)")
+    TOKEN_LIMITER.success(host)
 
 
 @app.get("/")

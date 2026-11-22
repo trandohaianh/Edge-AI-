@@ -7,7 +7,9 @@ một chỗ để không ai phải nhớ điều đó nữa.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -23,3 +25,16 @@ def write_json(path: str | Path, obj: Any, indent: int = 1) -> None:
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(obj, f, indent=indent, ensure_ascii=False)
         f.write("\n")  # kết thúc bằng xuống dòng, như mọi tệp văn bản khác
+
+
+def utf8_stdio() -> None:
+    """Cho các lệnh dòng lệnh in được tiếng Việt trên Windows.
+
+    Khi đầu ra không phải cửa sổ console (chuyển hướng ra tệp, chạy qua ống
+    dẫn, Git Bash, bộ lập lịch), Python trên Windows dùng cp1252 và ``print``
+    tiếng Việt làm lệnh CRASH với UnicodeEncodeError — lỗi tìm thấy khi kiểm
+    thử đầu-cuối (bước 8). Ép về UTF-8.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(AttributeError, ValueError):
+            stream.reconfigure(encoding="utf-8", errors="replace")

@@ -174,6 +174,7 @@ def srv(models, tmp_path, monkeypatch):
     from edge_ai.api import server
 
     monkeypatch.delenv("EDGE_API_TOKEN", raising=False)
+    server.TOKEN_LIMITER.reset()
     eng = server.Engine(models=models, audit_path=tmp_path / "audit.jsonl", start=False)
     monkeypatch.setattr(server, "ENGINE", eng)
     return server, eng, TestClient(server.app, client=LOCAL), tmp_path / "audit.jsonl"
@@ -462,3 +463,54 @@ def test_quy_tac_phu_thuoc_giua_cac_goi():
                     mods = [a.name for a in node.names]
                 bad += [f"{f.name}: {m}" for m in mods if m.startswith(banned)]
     assert not bad, bad
+
+
+def test_sai_ma_nhieu_lan_thi_bi_khoa_tam(srv, monkeypatch):
+    """Bước 7: không dò được mã truy cập dùng chung bằng cách thử liên tục."""
+    from fastapi.testclient import TestClient
+
+    server, eng, c, log = srv
+    eng._step()
+    monkeypatch.setenv("EDGE_API_TOKEN", "ma-dung-123")
+    body = {"action": "bo_qua"}
+    # Mở trang lần đầu (chưa gửi mã) không tính là sai
+    for _ in range(10):
+        assert c.post("/api/act", json=body).status_code == 401
+    for _ in range(server.TOKEN_LIMITER.max_failures - 1):
+        assert c.post("/api/act", json=body, headers={"X-API-Token": "sai"}).status_code == 401
+    r = c.post("/api/act", json=body, headers={"X-API-Token": "sai"})
+    assert r.status_code == 401  # lần sai thứ 5 vẫn trả 401, rồi khoá
+    r = c.post("/api/act", json=body, headers={"X-API-Token": "ma-dung-123"})
+    assert r.status_code == 429 and int(r.headers["Retry-After"]) > 0
+    assert "thử lại sau" in r.json()["detail"]
+    assert c.post("/api/scenario/bird", headers={"X-API-Token": "ma-dung-123"}).status_code == 429
+    assert _log_lines(log) == []  # bị khoá thì không ghi gì
+    # Máy khác trong mạng không bị khoá theo
+    other = TestClient(server.app, client=("10.0.0.7", 40000))
+    r = other.post("/api/act", json=body, headers={"X-API-Token": "ma-dung-123"})
+    assert r.status_code == 200
+    assert c.get("/api/state").status_code == 200  # vẫn xem được khi bị khoá
+
+
+def test_bo_chan_do_ma_het_han_va_xoa_khi_dung():
+    from edge_ai.api.auth import FailureLimiter
+
+    lim = FailureLimiter(max_failures=3, window_s=10, lock_s=60, max_clients=2)
+    assert not lim.failure("a", now=0) and not lim.failure("a", now=1)
+    lim.success("a")  # đúng mã thì xoá số lần sai
+    assert not lim.failure("a", now=2) and not lim.failure("a", now=3)
+    assert lim.failure("a", now=4)  # lần sai thứ 3 liên tiếp: khoá
+    assert lim.retry_after("a", now=5) == 59
+    assert lim.retry_after("a", now=64.5) == 0  # hết khoá
+    # Sai rải rác ngoài cửa sổ 10 s thì không bị khoá
+    assert not any(lim.failure("b", now=t) for t in (100, 111, 122, 133))
+    # Bị dò từ rất nhiều IP: bộ đếm không phình quá max_clients
+    for i in range(50):
+        lim.failure(f"ip{i}", now=200 + i)
+    assert len(lim._fails) <= 2
+
+
+def test_trang_dashboard_khong_bi_luu_dem_ban_cu(srv):
+    _, _, c, _ = srv
+    assert c.get("/").headers["Cache-Control"] == "no-cache"
+    assert c.get("/api/health").headers["Cache-Control"] == "no-store"

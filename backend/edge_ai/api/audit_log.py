@@ -33,6 +33,8 @@ import sys
 import time
 from pathlib import Path
 
+from edge_ai.io_utils import utf8_stdio
+
 GENESIS = "0" * 64
 PRUNED_FILE = "pruned.json"
 FILE_MODE = 0o600  # PRD A-17: chỉ user của dịch vụ đọc/ghi được
@@ -197,6 +199,7 @@ def secure(path: Path) -> None:
 
 
 def main(argv: list[str]) -> int:
+    utf8_stdio()
     target = Path(argv[1]) if len(argv) > 1 else Path("logs/audit.jsonl")
     store = AuditStore(target)
     files = store.files()

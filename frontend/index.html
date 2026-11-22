@@ -17,6 +17,7 @@ header h1 b{color:var(--red)}
 .pill{font:600 11px/1 var(--mono);padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
 .pill.live{color:var(--ok);border-color:#1d4731}
 .pill.down{color:var(--red);border-color:#5a1a28}
+.stale .wrap{opacity:.45;filter:grayscale(.6)}
 .banner{margin:14px 14px 0;padding:10px 14px;border-radius:8px;border:1px solid #6b3030;background:#2e1a1a;color:#f3b0b0;font-weight:600;display:none}
 .ask{display:none;margin:0 0 10px;padding:8px 11px;border-radius:7px;border:1px solid #4a3a16;background:#1d1708;color:var(--warn);font-weight:700}
 .msg{min-height:18px;margin-top:8px;font-size:12px;color:var(--muted)}
@@ -158,10 +159,13 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function token(){try{return sessionStorage.getItem('edge_token')||'';}catch(e){return '';}}
 async function post(url,body){
   const h={'Content-Type':'application/json'};const t=token();if(t)h['X-API-Token']=t;
-  let r=await fetch(url,{method:'POST',headers:h,body:body?JSON.stringify(body):undefined});
+  // fetch chỉ ném lỗi khi không tới được máy chủ: báo bằng tiếng Việt, rõ là CHƯA ghi.
+  const send=()=>fetch(url,{method:'POST',headers:h,body:body?JSON.stringify(body):undefined})
+    .catch(()=>{throw new Error('mất kết nối máy chủ — chưa có gì được ghi');});
+  let r=await send();
   if(r.status===401){const t2=prompt('Máy chủ yêu cầu mã truy cập ca trực:');
     if(t2){try{sessionStorage.setItem('edge_token',t2);}catch(e){} h['X-API-Token']=t2;
-      r=await fetch(url,{method:'POST',headers:h,body:body?JSON.stringify(body):undefined});}}
+      r=await send();}}
   let d={};try{d=await r.json();}catch(e){}
   if(!r.ok)throw new Error(d.detail&&typeof d.detail==='string'?d.detail:(d.error||('lỗi '+r.status)));
   return d;}
@@ -241,7 +245,15 @@ async function tick(){
   let s;
   try{const r=await fetch('/api/state',{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);s=await r.json();}
-  catch(e){live(false,'● mất kết nối máy chủ');return;}
+  catch(e){
+    // Mất kết nối: số liệu trên màn hình đã cũ. Làm mờ và khoá nút quyết
+    // định để người trực không quyết dựa trên dữ liệu cũ (kiểm thử bước 8).
+    live(false,'● mất kết nối máy chủ');document.body.classList.add('stale');
+    $('bok').disabled=$('bno').disabled=true;
+    const b=$('banner');b.style.display='block';
+    b.textContent='⚠ Mất kết nối máy chủ — số liệu bên dưới là của lần cập nhật cuối, KHÔNG dùng để ra quyết định. Đang thử kết nối lại…';
+    return;}
+  document.body.classList.remove('stale');
   const ban=$('banner');
   if(s.models_trained===false){ban.style.display='block';
     ban.textContent='⚠ Máy chủ đang chạy với trọng số CHƯA HUẤN LUYỆN — mọi nhận dạng trên màn hình là vô nghĩa.';}
@@ -249,7 +261,7 @@ async function tick(){
   const T=s.tracks||[];
   if(!T.length||!T.some(t=>t.tid===SEL))SEL=T.length?T[0].tid:null;
   renderTracks(s,T);
-  if(!T.length){live(true,'● đang chạy — chưa có vết bám xác nhận');draw(s,SEL);return;}
+  if(!T.length){live(true,'● đang chạy — chưa có vết bám xác nhận');$('bok').disabled=$('bno').disabled=true;draw(s,SEL);return;}
   live(true,'● đang chạy');
   draw(s,SEL);
   s=Object.assign({},s,T.find(t=>t.tid===SEL));

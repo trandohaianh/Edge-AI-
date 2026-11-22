@@ -37,7 +37,7 @@ import time
 from pathlib import Path
 
 from edge_ai.api.audit_log import PRUNED_FILE, AuditStore, last_hash, secure
-from edge_ai.io_utils import read_json, write_json
+from edge_ai.io_utils import read_json, utf8_stdio, write_json
 
 log = logging.getLogger("edge.audit_backup")
 KEEP_MONTHS = 12
@@ -233,6 +233,7 @@ def daily(log_base: Path, dest: Path, interval: float = 86400.0) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    utf8_stdio()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     ap = argparse.ArgumentParser(prog="audit_backup", description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)

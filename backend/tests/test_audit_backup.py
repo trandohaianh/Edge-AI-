@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -165,3 +167,24 @@ def test_lenh_dong_lenh(tmp_path, capsys):
     assert AB.main(["verify-snapshot", "--snapshot", str(snap)]) == 0
     assert AB.main(["restore", "--snapshot", str(snap), "--log", str(log)]) == 1  # không ghi đè
     assert "LỖI" in capsys.readouterr().err
+
+
+def test_lenh_kiem_tra_in_duoc_tieng_viet_khi_chuyen_huong(tmp_path):
+    """Lỗi tìm thấy ở bước 8: trên Windows, chuyển hướng đầu ra thì Python
+    dùng cp1252 và lệnh kiểm tra nhật ký crash vì chữ tiếng Việt."""
+    log = tmp_path / "audit.jsonl"
+    _fill(log, [(2026, 11)])
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONIOENCODING", "PYTHONUTF8")}
+    backend = Path(__file__).resolve().parents[1]
+    env["PYTHONPATH"] = str(backend)
+    for args in (
+        ["edge_ai.api.audit_log", str(log)],
+        ["edge_ai.api.audit_backup", "backup", "--log", str(log), "--dest", str(tmp_path / "b")],
+    ):
+        r = subprocess.run([sys.executable, "-m", *args], capture_output=True, env=env)
+        assert r.returncode == 0, r.stderr.decode("utf-8", "replace")
+        assert b"Traceback" not in r.stderr
+    r = subprocess.run(
+        [sys.executable, "-m", "edge_ai.api.audit_log", str(log)], capture_output=True, env=env
+    )
+    assert "dòng hợp lệ" in r.stdout.decode("utf-8")

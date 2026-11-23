@@ -1,0 +1,63 @@
+{
+ "host": {
+  "cpu": "Intel(R) Core(TM) i7-6700HQ CPU @ 2.60GHz",
+  "logical_cpus": 8,
+  "os": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "numpy": "2.5.5",
+  "torch": "2.15.0+cpu",
+  "torch_threads": 2,
+  "runtime": "PyTorch eager (CPU)"
+ },
+ "budget_ms": 50.0,
+ "single_target_pipeline": {
+  "n": 12152,
+  "p50_ms": 0.542,
+  "p95_ms": 7.72,
+  "p99_ms": 10.156,
+  "max_ms": 92.093,
+  "over_budget": 3
+ },
+ "multi_target_mtt": {
+  "M1 · 3 drone + 1 chim, báo động giả 1/khung": {
+   "n": 985,
+   "p50_ms": 12.247,
+   "p95_ms": 23.484,
+   "p99_ms": 29.823,
+   "max_ms": 41.258,
+   "over_budget": 0
+  },
+  "M2 · 2 drone bay sát nhau (cách 2°), báo động giả 1/khung": {
+   "n": 985,
+   "p50_ms": 7.872,
+   "p95_ms": 18.171,
+   "p99_ms": 24.836,
+   "max_ms": 47.664,
+   "over_budget": 0
+  },
+  "M3 · bầy 6 drone trong mưa, báo động giả 3/khung": {
+   "n": 985,
+   "p50_ms": 22.074,
+   "p95_ms": 58.225,
+   "p99_ms": 77.038,
+   "max_ms": 109.635,
+   "over_budget": 67
+  },
+  "M4 · 2 drone + 2 chim, sương mù đêm": {
+   "n": 985,
+   "p50_ms": 12.176,
+   "p95_ms": 24.575,
+   "p99_ms": 33.196,
+   "max_ms": 61.462,
+   "over_budget": 1
+  }
+ },
+ "ten_targets_mtt": {
+  "n": 585,
+  "p50_ms": 25.552,
+  "p95_ms": 45.008,
+  "p99_ms": 69.744,
+  "max_ms": 144.566,
+  "over_budget": 20
+ }
+}

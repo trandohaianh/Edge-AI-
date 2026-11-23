@@ -247,3 +247,35 @@ luyện trên trạng thái EKF với cổng cũ (`training/train_traj_ekf.py`).
 Hướng cho chủ dự án chọn: (1) giữ cổng cũ và ghi rõ lý do (E2-B); (2) đổi cổng
 **kèm** chỉnh nhất quán bộ lọc (kiểm NIS, tăng `sigma_a` hoặc R), rồi đo lại;
 (3) dùng phân vị cao hơn, ví dụ 99,9% hoặc 99,99%, rồi đo lại.
+
+### E4-A. Giữ PyTorch eager: p50/p95/p99 thời gian một khung
+
+**Chưa đo trên thiết bị biên đích (Jetson / SoC 10–25 W).** Số dưới đây đo
+trên máy phát triển, ngày 23/11/2026, bằng `experiments/frame_latency.py`
+(ghi `data/results/frame_latency.json`). Runtime không đổi: PyTorch eager,
+không ONNX.
+
+Cấu hình máy: Intel Core i7-6700HQ 2,6 GHz (4 nhân / 8 luồng), RAM 8 GB,
+WSL2 (Linux 6.18) trên Windows 11, Python 3.12.3, numpy 2.5.5, torch
+2.15.0+cpu, **2 luồng torch** (`torch.set_num_threads(2)`, như khi chạy
+thật). Đây là số **thô của từng khung** (không lấy min qua nhiều lần phát lại
+như `evaluate_mtt.replay_latency`), nên gồm cả nhiễu do hệ điều hành; thời
+gian sinh dữ liệu mô phỏng đã trừ ra. Cổng EKF là cổng hiện hành (`gate*len(z)`),
+T của E1 đã áp dụng.
+
+| Tải | Số khung | p50 | p95 | p99 | Lớn nhất | Khung > 50 ms |
+|---|---|---|---|---|---|---|
+| 1 mục tiêu, 7 kịch bản S1–S7 (8 lần × 220 khung) | 12 152 | 0,54 ms | **7,7 ms** | 10,2 ms | 92 ms | 3 (0,02%) |
+| M1 · 3 drone + 1 chim, 1 báo động giả/khung | 985 | 12,2 ms | **23,5 ms** | 29,8 ms | 41 ms | 0 |
+| M2 · 2 drone sát nhau | 985 | 7,9 ms | **18,2 ms** | 24,8 ms | 48 ms | 0 |
+| M3 · bầy 6 drone, mưa, 3 báo động giả/khung | 985 | 22,1 ms | **58,2 ms** | 77,0 ms | 110 ms | 67 (6,8%) |
+| M4 · 2 drone + 2 chim, sương đêm | 985 | 12,2 ms | **24,6 ms** | 33,2 ms | 61 ms | 1 |
+| 10 drone, 1 báo động giả/khung (5 lần × 120 khung) | 585 | 25,6 ms | **45,0 ms** | 69,7 ms | 145 ms | 20 (3,4%) |
+
+So với ngân sách 50 ms: **đạt** với 1 mục tiêu và với 2–4 mục tiêu (phần
+bắt buộc của A-2 là 3 mục tiêu; p95 dưới 25 ms). **Không đạt ở p95** với bầy
+6 drone có 3 báo động giả/khung (58 ms), và p99 vượt với 10 drone. Phần 6–10
+mục tiêu theo PRD chỉ là theo dõi, không bắt buộc. Trên Jetson số có thể khác
+nhiều theo cả hai chiều (CPU ARM chậm hơn, nhưng có GPU); nếu đo trên máy đích
+mà p95 vượt 50 ms thì hướng E4-B (ONNX Runtime, mục 6: nhanh hơn 2–4 lần trên
+x86) là bước tiếp theo.

@@ -8,7 +8,7 @@
 
 | Loại | Cách chạy | Số lượng | Kết quả 22/11/2026 |
 |---|---|---|---|
-| Đơn vị + tích hợp (pytest) | `python -m pytest` | **82** | 82 đạt trong môi trường cài đúng `requirements.lock` (WSL, 23/11) và CI. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
+| Đơn vị + tích hợp (pytest) | `python -m pytest` | **96** | 96 đạt trong môi trường cài đúng `requirements.lock` (WSL, ổ Linux, 23/11; gồm 14 test sửa lỗi `test_loi_ro_rang.py`). Chạy trên ổ D: qua WSL thì bài quyền tệp 600 hỏng vì ổ đó bỏ qua chmod. CI (82 test) đạt 22/11. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
 | CI | GitHub Actions: lint → quét lỗ hổng → test → đầu-cuối → ONNX → build Docker + gọi `/api/health` | 6 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
 | Đầu-cuối trên trình duyệt | **Tự động** bằng Playwright + Chromium (`backend/tests/e2e`), mục 3 | 6 bài, phủ E-1..E-8 + mã truy cập + CSP | 6 đạt trên Windows, 3 lần liên tiếp (~45 s). Trước đó làm tay, tìm ra 4 lỗi |
@@ -111,7 +111,7 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
 ## 5. Cách chạy lại
 
 ```bash
-python -m pytest                              # 82 test, ~4 phút trên laptop
+python -m pytest                              # 96 test, ~4 phút trên laptop
 python -m edge_ai.experiments.soak --minutes 40   # trong backend/: chạy dài, cần psutil
 python -m edge_ai.experiments.export_onnx         # trong backend/: cần extra tools
 # đầu-cuối (một lần: pip install -e ".[e2e]" && python -m playwright install chromium)

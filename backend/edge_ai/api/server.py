@@ -501,18 +501,24 @@ def health():
         return JSONResponse({"ok": False, "reason": "đang khởi động"}, status_code=503)
     age = time.time() - e.last_step if e.last_step else None
     alive = age is not None and age < 2.0
+    # Nhật ký kiểm toán hỏng: vòng giám sát vẫn chạy, nhưng quyết định của người trực
+    # không ghi được. Trả 503 để Docker/systemd đánh dấu "unhealthy" và kỹ thuật viên
+    # được báo, thay vì im lặng 200.
+    audit_ok = e.audit_error is None
     body = {
-        "ok": alive and e.trained,
+        "ok": alive and e.trained and audit_ok,
         "loop_alive": alive,
         "seconds_since_last_frame": None if age is None else round(age, 3),
         "models_trained": e.trained,
         "scenario": e.name,
         "auth_required": bool(os.environ.get("EDGE_API_TOKEN")),
         "audit_chain_head": e._last_hash[:16],
-        "audit_ok": e.audit_error is None,
+        "audit_ok": audit_ok,
         "uptime_s": round(time.time() - e.started_at, 1),
     }
-    return JSONResponse(body, status_code=200 if alive else 503)
+    if not audit_ok:
+        body["reason"] = "nhật ký kiểm toán hỏng: không ghi được quyết định (xem log dịch vụ)"
+    return JSONResponse(body, status_code=200 if alive and audit_ok else 503)
 
 
 @app.get("/api/state")

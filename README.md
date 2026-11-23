@@ -261,7 +261,7 @@ cd ../docs/build && node report.js vi && node report.js en && node slides.js vi 
 |---|---|---|
 | GET | `/` | Dashboard |
 | GET | `/api/state` | Trạng thái khung mới nhất: các vết bám, bằng chứng, độ trễ, nhật ký |
-| GET | `/api/health` | Kiểm tra sống (200 khi vòng xử lý đang chạy) |
+| GET | `/api/health` | Kiểm tra sống (200 khi vòng xử lý đang chạy và nhật ký kiểm toán ghi được; 503 kèm `reason` nếu không) |
 | GET | `/api/metrics` | Số đo đã lưu trong `data/results/` |
 | POST | `/api/act` | `{"action": "xac_nhan"\|"bo_qua", "tid": <id vết>, "operator": "<tên ca>"}` |
 | POST | `/api/scenario/{name}` | Đổi kịch bản: `clear`, `fog_night`, `jamming`, `bird`, `patch`, `dropout`, `swarm` |

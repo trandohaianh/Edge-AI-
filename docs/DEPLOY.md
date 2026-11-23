@@ -87,7 +87,8 @@ nhật ký"). **Phải dừng `app` trước khi khôi phục.**
 ## 7. Giám sát hằng ngày (5 phút)
 
 Không dùng hệ thống giám sát riêng (chi phí 0, một máy). Những gì đã có:
-- **Docker healthcheck** gọi `/api/health` mỗi 15 s. Vòng xử lý đứng quá 2 s
+- **Docker healthcheck** gọi `/api/health` mỗi 15 s. Vòng xử lý đứng quá 2 s,
+  hoặc nhật ký kiểm toán hỏng (`audit_ok: false`, không ghi được quyết định),
   thì `app` thành `unhealthy`, và `restart: unless-stopped` dựng lại khi
   container chết.
 - **Dashboard** tự báo "mất kết nối máy chủ" bằng băng đỏ.

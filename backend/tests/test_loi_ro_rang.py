@@ -150,7 +150,11 @@ def test_pruned_hong_thi_dich_vu_van_chay_nhung_tu_choi_ghi(models, tmp_path, mo
     monkeypatch.setattr(server, "ENGINE", eng)
     c = TestClient(server.app, client=LOCAL)
     eng._step()
-    assert c.get("/api/health").json()["audit_ok"] is False
+    h = c.get("/api/health")
+    # vòng lặp vẫn sống nhưng nhật ký hỏng → 503 để Docker đánh dấu unhealthy (G-15)
+    assert h.status_code == 503
+    assert h.json()["audit_ok"] is False and h.json()["loop_alive"] is True
+    assert h.json()["ok"] is False and "nhật ký" in h.json()["reason"]
     r = c.post("/api/act", json={"action": "bo_qua"})
     assert r.status_code == 503
     assert eng.tracks[eng.msg["tid"]].operator is None

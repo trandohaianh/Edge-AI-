@@ -8,7 +8,7 @@
 
 | Loại | Cách chạy | Số lượng | Kết quả 22/11/2026 |
 |---|---|---|---|
-| Đơn vị + tích hợp (pytest) | `python -m pytest` | **96** | 96 đạt trong môi trường cài đúng `requirements.lock` (WSL, ổ Linux, 23/11; gồm 14 test sửa lỗi `test_loi_ro_rang.py`). Chạy trên ổ D: qua WSL thì bài quyền tệp 600 hỏng vì ổ đó bỏ qua chmod. CI (82 test) đạt 22/11. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
+| Đơn vị + tích hợp (pytest) | `python -m pytest` | **104** | 104 đạt trong môi trường cài đúng `requirements.lock` (WSL, ổ Linux, 23/11; gồm 14 test sửa lỗi `test_loi_ro_rang.py` và 8 test hiệu chỉnh `test_calibration.py`). Chạy trên ổ D: qua WSL thì bài quyền tệp 600 hỏng vì ổ đó bỏ qua chmod. CI (82 test) đạt 22/11. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
 | CI | GitHub Actions: lint → quét lỗ hổng → test → đầu-cuối → ONNX → build Docker + gọi `/api/health` | 6 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
 | Đầu-cuối trên trình duyệt | **Tự động** bằng Playwright + Chromium (`backend/tests/e2e`), mục 3 | 6 bài, phủ E-1..E-8 + mã truy cập + CSP | 6 đạt trên Windows, 3 lần liên tiếp (~45 s). Trước đó làm tay, tìm ra 4 lỗi |
@@ -24,6 +24,7 @@
 | Lõi thuật toán | `test_core.py` (20) | Mô phỏng vật lý, EKF, hợp nhất, mâu thuẫn cảm biến |
 | Bám nhiều mục tiêu | `test_mtt.py` (13) | GNN, cổng χ², M-of-N, không đổi ID, vết giả, trần mạng nặng |
 | Pipeline + máy chủ | `test_pipeline_server.py` (33) | Nạp mô hình an toàn, mất dấu, API, xác thực, chống dò mã, CSRF, CSP, header, nhật ký, quy tắc phụ thuộc |
+| Hiệu chỉnh xác suất | `test_calibration.py` (8) | T > 0, ECE không tệ hơn, argmax không đổi, thiếu tệp thì T = 1, pipeline áp T vào logit |
 | Nhật ký + sao lưu | `test_audit_backup.py` (13) | Chia tháng, sao lưu/khôi phục, dọn 12 tháng, quyền 600, dòng lệnh tiếng Việt |
 
 **Đối chiếu với các loại kiểm thử của quy trình:**
@@ -111,7 +112,8 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
 ## 5. Cách chạy lại
 
 ```bash
-python -m pytest                              # 96 test, ~4 phút trên laptop
+python -m pytest                              # 104 test, ~4 phút trên laptop
+python -m edge_ai.experiments.calibrate       # trong backend/: học T, ghi ECE trước/sau
 python -m edge_ai.experiments.soak --minutes 40   # trong backend/: chạy dài, cần psutil
 python -m edge_ai.experiments.export_onnx         # trong backend/: cần extra tools
 # đầu-cuối (một lần: pip install -e ".[e2e]" && python -m playwright install chromium)
@@ -167,3 +169,30 @@ CI chạy lại mỗi lần push.
 (`data/results/onnx_export.json`). Số tuyệt đối dao động theo tải máy; tỉ lệ
 ONNX Runtime nhanh hơn khoảng 2–4 lần thì ổn định qua 3 lần đo. **Chưa** có
 số trên Jetson. Ở đó bước tiếp theo là `trtexec --onnx=... --fp16`.
+
+## 7. Đo lại theo quyết định của chủ dự án (E1–E4, 23/11/2026)
+
+Mọi số ở mục này đo trên **dữ liệu mô phỏng** của chính dự án
+(`backend/edge_ai/sim/`), không phải dữ liệu thật. Danh sách bộ dữ liệu thật
+ứng viên: [DATASETS_CANDIDATES.md](DATASETS_CANDIDATES.md) (E3, chưa tải).
+
+### E1-A. Temperature scaling cho hai bộ phân loại
+
+`experiments/calibrate.py` sinh lại đúng tập kiểm định và tập test của lúc huấn
+luyện (cùng hạt giống). T học bằng cực tiểu NLL trên **tập kiểm định**
+(2 000 mẫu), số đo dưới đây trên **tập test** tách riêng (2 800 mẫu). ECE dùng
+15 khoảng đều. T lưu ở `data/models/calibration.json`, cạnh trọng số;
+`load_models` đọc và `md_logp_batch` / `rf_logp_batch` dùng
+`softmax(logit / T)`. Thiếu tệp thì T = 1, tức là đúng hành vi cũ.
+
+| Bộ phân loại | T | ECE trước → sau | NLL trước → sau | Độ chính xác |
+|---|---|---|---|---|
+| RF (STFT + CNN) | 0,615 | 0,0437 → **0,0098** | 0,132 → 0,107 | 0,9643 → 0,9643 |
+| Micro-Doppler CNN | 0,690 | 0,0345 → **0,0125** | 0,124 → 0,102 | 0,9536 → 0,9536 |
+
+T < 1: hai mạng đang **rụt rè** chứ không tự tin quá mức. Nguyên nhân hợp lý
+là `label_smoothing=0.05` lúc huấn luyện kéo xác suất lớn nhất xuống. Sau hiệu
+chỉnh, xác suất đưa vào bộ hợp nhất nhọn hơn; trần 4 nats mỗi cảm biến
+(`fusion.PER_SENSOR_CAP`) vẫn giữ nguyên. Số liệu: `data/results/calibration.json`.
+Bản ONNX (mục 6) xuất logit, nên nếu sau này chạy bằng ONNX Runtime thì vẫn
+phải chia cho T sau mạng.

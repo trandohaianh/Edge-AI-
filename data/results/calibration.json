@@ -1,0 +1,26 @@
+{
+ "rf": {
+  "acc_before": 0.9642857142857143,
+  "acc_after": 0.9642857142857143,
+  "nll_before": 0.1323440527698856,
+  "nll_after": 0.10661215016032559,
+  "ece_before": 0.04370560372368729,
+  "ece_after": 0.00978454896936275,
+  "T": 0.615246590024687,
+  "n_val": 2000,
+  "n_test": 2800
+ },
+ "md": {
+  "acc_before": 0.9535714285714286,
+  "acc_after": 0.9535714285714286,
+  "nll_before": 0.12364097992467753,
+  "nll_after": 0.10154794280834079,
+  "ece_before": 0.034533213095315804,
+  "ece_after": 0.012460443071354972,
+  "T": 0.6902995510235,
+  "n_val": 2000,
+  "n_test": 2800
+ },
+ "ece_bins": 15,
+ "note": "Dữ liệu MÔ PHỎNG (sim/rf_sim.py, sim/radar_sim.py), không phải dữ liệu thật. T học trên tập kiểm định, số đo trên tập test tách riêng."
+}

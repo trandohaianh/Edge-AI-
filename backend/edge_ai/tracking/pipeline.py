@@ -30,6 +30,7 @@ from edge_ai.config import (  # noqa: F401
     RESULTS_DIR,
     RF_CLASSES,
 )
+from edge_ai.ml.calibration import load_temperatures
 from edge_ai.ml.nets import MicroDopplerNet, TrajTransformer
 from edge_ai.ml.rf_stft import RFNetSTFT
 from edge_ai.sim.scene import TARGET_KINDS, Detection, Weather
@@ -85,7 +86,17 @@ def load_models(allow_untrained: bool = False, data_dir: Path | None = None):
         )
     for m in (rf, md, tj):
         m.trained = not missing
+    # Temperature scaling (ml/calibration.py): T học trên tập kiểm định, lưu
+    # trong calibration.json cạnh trọng số. Thiếu tệp thì T = 1 (hành vi cũ).
+    temps = load_temperatures(data_dir)
+    rf.temperature = temps.get("rf", 1.0)
+    md.temperature = temps.get("md", 1.0)
     return rf, md, tj
+
+
+def _probs(model, logits: torch.Tensor) -> np.ndarray:
+    """softmax(logit / T). Chia cho T > 0 không đổi argmax, chỉ đổi độ tin cậy."""
+    return torch.softmax(logits / float(getattr(model, "temperature", 1.0)), 1).numpy()
 
 
 def warmup(models) -> None:
@@ -145,13 +156,13 @@ def md_logp_batch(md: MicroDopplerNet, specs: list) -> list[np.ndarray]:
     batch rẻ hơn nhiều so với gọi mạng từng cái một."""
     with torch.no_grad():
         x = torch.from_numpy(np.stack(specs).astype(np.float32)[:, None])
-        p = torch.softmax(md(x), 1).numpy()
+        p = _probs(md, md(x))
     return [_md_map(r) for r in p]
 
 
 def rf_logp_batch(rf: RFNetSTFT, iqs: list) -> list[np.ndarray]:
     with torch.no_grad():
-        p = torch.softmax(rf(torch.from_numpy(np.stack(iqs).astype(np.float32))), 1).numpy()
+        p = _probs(rf, rf(torch.from_numpy(np.stack(iqs).astype(np.float32))))
     return [_rf_map(r) for r in p]
 
 

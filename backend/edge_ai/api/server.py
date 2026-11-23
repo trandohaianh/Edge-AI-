@@ -154,7 +154,17 @@ class Engine:
         # Nhật ký chia theo tháng: audit_path là tên gốc, tệp thật là
         # <tên>-YYYY-MM.jsonl cùng thư mục (xem audit_log.AuditStore).
         self.audit_store = audit_log.AuditStore(self.audit_path)
-        self._last_hash = self.audit_store.last_hash()
+        # Nhật ký hỏng tới mức không biết nối chuỗi vào đâu (vd. pruned.json
+        # hỏng): dịch vụ GIÁM SÁT vẫn chạy, nhưng từ chối ghi quyết định với
+        # lỗi 503 nói rõ nguyên nhân, thay vì chết lúc khởi động hoặc ghi
+        # tiếp vào một chuỗi sai.
+        self.audit_error: str | None = None
+        try:
+            self._last_hash = self.audit_store.last_hash()
+        except audit_log.AuditLogError as e:
+            log.error("%s", e)
+            self.audit_error = str(e)
+            self._last_hash = ""
         self.started_at = time.time()
         self.last_step = 0.0
         self._stop = threading.Event()
@@ -327,10 +337,17 @@ class Engine:
             m["stage_latency"] = lat
             m["audit"] = [asdict(a) for a in list(self.audit)[-12:]][::-1]
             m["models_trained"] = self.trained
+            m["dropped_nonfinite"] = dict(self.pipe.dropped)
             return m
 
     def act(self, action: str, operator: str, tid: int | None = None) -> tuple[int, bool]:
-        """Ghi một quyết định của chuyên viên. Trả về (số bản ghi, đã ghi đĩa)."""
+        """Ghi một quyết định của chuyên viên. Trả về (số bản ghi, đã ghi đĩa).
+
+        Vết bám chỉ bị khoá SAU KHI quyết định đã ghi bền xuống đĩa. Ghi
+        không được thì vết KHÔNG bị khoá, không có gì được thêm vào nhật ký
+        trong RAM, và trả 503 để người trực biết mà thử lại. Bản cũ khoá vết
+        trước rồi mới ghi: ghi hỏng thì quyết định mất mà vết vẫn bị khoá,
+        không ai ghi lại được nữa."""
         with self.lock:
             if self.msg is None or self.msg.get("tid") is None:
                 raise HTTPException(409, "chưa có vết bám nào để quyết định")
@@ -355,9 +372,15 @@ class Engine:
                 pos=m.get("pos", []),
                 tid=int(tid),
             )
+            if not self._persist(entry):
+                raise HTTPException(
+                    503,
+                    "không ghi được quyết định xuống nhật ký, vết bám CHƯA bị khoá "
+                    "— thử lại; nếu vẫn lỗi, báo kỹ thuật",
+                )
             tr.operator = action
             self.audit.append(entry)
-            return len(self.audit), self._persist(entry)
+            return len(self.audit), True
 
     def _persist(self, entry: AuditEntry) -> bool:
         """Nối một dòng JSON vào nhật ký trên đĩa.
@@ -366,13 +389,16 @@ class Engine:
         trình là mất sạch, trái với cam kết "mọi thao tác đều được ghi nhật
         ký", và list đó lớn lên mãi không giới hạn.
         """
+        if self.audit_error is not None:
+            log.error("từ chối ghi nhật ký: %s", self.audit_error)
+            return False
         try:
             rec = self.audit_store.append(
                 self._last_hash, asdict(entry) | {"scenario": self.name}, ts=entry.ts
             )
             self._last_hash = rec["hash"]
             return True
-        except OSError:
+        except (OSError, ValueError, TypeError):
             log.exception("không ghi được nhật ký %s", self.audit_path)
             return False
 
@@ -483,6 +509,7 @@ def health():
         "scenario": e.name,
         "auth_required": bool(os.environ.get("EDGE_API_TOKEN")),
         "audit_chain_head": e._last_hash[:16],
+        "audit_ok": e.audit_error is None,
         "uptime_s": round(time.time() - e.started_at, 1),
     }
     return JSONResponse(body, status_code=200 if alive else 503)

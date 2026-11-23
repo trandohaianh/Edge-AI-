@@ -27,6 +27,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import logging
 import os
 import re
 import sys
@@ -38,6 +39,13 @@ from edge_ai.io_utils import utf8_stdio
 GENESIS = "0" * 64
 PRUNED_FILE = "pruned.json"
 FILE_MODE = 0o600  # PRD A-17: chỉ user của dịch vụ đọc/ghi được
+
+log = logging.getLogger(__name__)
+
+
+class AuditLogError(RuntimeError):
+    """Nhật ký ở trạng thái không dùng tiếp được một cách an toàn (vd. tệp
+    mốc dọn ``pruned.json`` hỏng). Thông báo nói rõ tệp nào và cách xử lý."""
 
 
 def _digest(prev: str, body: dict) -> str:
@@ -55,12 +63,59 @@ def chain(prev: str, rec: dict) -> dict:
 def _records(path: Path):
     """Các dòng đầy đủ của tệp. Bỏ qua dòng cuối CHƯA có ký tự xuống dòng:
     đó là dòng đang được ghi dở (đọc trúng lúc dịch vụ đang ghi)."""
-    with open(path, encoding="utf-8", newline="") as f:
-        for i, line in enumerate(f, 1):
-            if not line.endswith("\n"):
+    # Đọc nhị phân rồi mới giải mã từng dòng ĐẦY ĐỦ: dòng ghi dở có thể bị
+    # cắt giữa một ký tự UTF-8 nhiều byte, giải mã cả tệp sẽ ném lỗi.
+    with open(path, "rb") as f:
+        for i, raw in enumerate(f, 1):
+            if not raw.endswith(b"\n"):
                 return
+            line = raw.decode("utf-8", errors="replace")
             if line.strip():
                 yield i, line
+
+
+def repair_tail(path: Path) -> int:
+    """Cắt bỏ dòng ghi dở ở cuối tệp (tiến trình chết giữa lúc ghi).
+
+    Nếu để nguyên, lần ghi sau nối tiếp vào đúng dòng hỏng đó, tạo ra một
+    dòng không phải JSON nằm GIỮA chuỗi và ``verify`` báo hỏng. Phần bị cắt
+    chưa bao giờ là một bản ghi hoàn chỉnh (chưa có ký tự xuống dòng, nên
+    ``last_hash`` cũng chưa từng tính nó vào chuỗi). Việc cắt được ghi vào
+    log của dịch vụ kèm số byte và SHA-256 của phần bị cắt. Trả về số byte
+    đã cắt."""
+    path = Path(path)
+    if not path.exists():
+        return 0
+    with open(path, "r+b") as f:
+        size = f.seek(0, os.SEEK_END)
+        if size == 0:
+            return 0
+        f.seek(size - 1)
+        if f.read(1) == b"\n":
+            return 0
+        # tìm ký tự xuống dòng cuối cùng, đọc lùi từng khối
+        keep, pos, block = 0, size, 64 * 1024
+        while pos > 0:
+            start = max(0, pos - block)
+            f.seek(start)
+            chunk = f.read(pos - start)
+            j = chunk.rfind(b"\n")
+            if j >= 0:
+                keep = start + j + 1
+                break
+            pos = start
+        f.seek(keep)
+        frag = f.read(size - keep)
+        f.truncate(keep)
+        f.flush()
+        os.fsync(f.fileno())
+    log.warning(
+        "nhật ký %s: cắt %d byte dòng ghi dở ở cuối tệp (sha256=%s)",
+        path,
+        len(frag),
+        hashlib.sha256(frag).hexdigest(),
+    )
+    return len(frag)
 
 
 def last_hash(path: Path) -> str:
@@ -152,7 +207,21 @@ class AuditStore:
 
     def pruned(self) -> dict:
         p = self.pruned_path
-        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        if not p.exists():
+            return {}
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            raise AuditLogError(
+                f"tệp mốc dọn nhật ký {p} bị hỏng ({e}); không xác định được băm "
+                "nối chuỗi. Khôi phục tệp này từ bản sao lưu rồi khởi động lại."
+            ) from e
+        if not isinstance(d, dict) or not isinstance(d.get("anchor", GENESIS), str):
+            raise AuditLogError(
+                f"tệp mốc dọn nhật ký {p} sai cấu trúc (cần một đối tượng JSON có "
+                "'anchor' là chuỗi). Khôi phục tệp này từ bản sao lưu."
+            )
+        return d
 
     # ------------------------------------------------------------- ghi
     def last_hash(self) -> str:
@@ -162,17 +231,42 @@ class AuditStore:
                 return h
         return self.pruned().get("anchor", GENESIS)
 
+    def target_for(self, ts: float) -> Path:
+        """Tệp sẽ nhận dòng ghi lúc ``ts``.
+
+        Thường là tệp của tháng chứa ``ts``. Nhưng nếu đồng hồ máy bị chỉnh
+        LÙI qua ranh giới tháng thì dòng mới không được rơi vào tệp tháng
+        trước: ``prev`` của nó trỏ dòng cuối ở tệp tháng sau, và khi kiểm theo
+        thứ tự tệp thì chuỗi bị đứt. Khi đó vẫn ghi vào tệp mới nhất; ``ts``
+        thật vẫn nằm nguyên trong bản ghi."""
+        path = self.path_for(ts)
+        monthly = self.monthly_files()
+        if monthly and monthly[-1].name > path.name:
+            return monthly[-1]
+        return path
+
     def append(self, prev: str, rec: dict, ts: float | None = None) -> dict:
-        """Nối một bản ghi vào tệp của tháng hiện tại. Trả về bản ghi đã nối băm."""
+        """Nối một bản ghi vào tệp của tháng hiện tại. Trả về bản ghi đã nối băm.
+
+        Ném ``OSError`` nếu không ghi bền được; khi đó tệp được đưa về đúng
+        kích thước trước lúc ghi (cố gắng hết mức), không để lại dòng dở."""
         ts = time.time() if ts is None else ts
         out = chain(prev, rec)
-        path = self.path_for(ts)
+        line = (json.dumps(out, ensure_ascii=False) + "\n").encode("utf-8")
+        path = self.target_for(ts)
         self.dir.mkdir(parents=True, exist_ok=True)
         new = not path.exists()
-        with open(path, "a", encoding="utf-8", newline="\n") as f:
-            f.write(json.dumps(out, ensure_ascii=False) + "\n")
-            f.flush()
-            os.fsync(f.fileno())
+        repair_tail(path)
+        with open(path, "ab") as f:
+            size = f.seek(0, os.SEEK_END)
+            try:
+                f.write(line)
+                f.flush()
+                os.fsync(f.fileno())
+            except BaseException:
+                with contextlib.suppress(OSError):
+                    f.truncate(size)
+                raise
         if new:
             secure(path)
         return out
@@ -206,7 +300,11 @@ def main(argv: list[str]) -> int:
     if not files:
         print(f"{target}: không có tệp nhật ký nào")
         return 1
-    ok, n, err = store.verify()
+    try:
+        ok, n, err = store.verify()
+    except AuditLogError as e:
+        print(f"LỖI: {e}")
+        return 2
     names = ", ".join(p.name for p in files)
     print(f"{n} dòng hợp lệ trong {len(files)} tệp ({names})" + ("" if ok else f" — LỖI: {err}"))
     return 0 if ok else 1

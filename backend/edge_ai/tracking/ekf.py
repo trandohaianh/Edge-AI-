@@ -25,6 +25,20 @@ def _wrap(a: float) -> float:
 _H_LIDAR = np.hstack([np.eye(3), np.zeros((3, 3))])
 
 
+def finite_measurement(z, R) -> bool:
+    """Số đo và hiệp phương sai đều là số hữu hạn (không NaN, không ±Inf).
+
+    Cảm biến hỏng hoặc gói tin lỗi có thể gửi NaN. ``NaN > gate`` là False,
+    nên nếu không chặn trước thì số đo NaN lọt qua cổng và làm x, P của bộ
+    lọc thành NaN vĩnh viễn."""
+    try:
+        return bool(np.all(np.isfinite(np.asarray(z, float)))) and bool(
+            np.all(np.isfinite(np.asarray(R, float)))
+        )
+    except (TypeError, ValueError):
+        return False
+
+
 class EKF:
     def __init__(
         self,
@@ -157,7 +171,10 @@ class EKF:
             return float("inf")
 
     def update(self, sensor: str, z: np.ndarray, R: np.ndarray, gate: float = 16.0) -> bool:
-        """Trả về False nếu số đo bị cổng thống kê loại (nghi là nhiễu)."""
+        """Trả về False nếu số đo bị cổng thống kê loại (nghi là nhiễu), hoặc
+        nếu số đo / R không hữu hạn (xem ``finite_measurement``)."""
+        if not finite_measurement(z, R):
+            return False
         hx = self.h(sensor, self.x)
         y = z - hx
         if sensor == "radar":
@@ -175,7 +192,7 @@ class EKF:
         except np.linalg.LinAlgError:
             return False
         d2 = float(y @ Sinv @ y)
-        if d2 > gate * len(z):
+        if not math.isfinite(d2) or d2 > gate * len(z):
             return False
         K = self.P @ H.T @ Sinv
         self.x = self.x + K @ y

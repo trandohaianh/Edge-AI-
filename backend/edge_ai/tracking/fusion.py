@@ -93,6 +93,11 @@ class IdentityFuser:
                 continue
             rel = reliability(d.sensor, w, rng_m if d.sensor == "eo" else None)
             lp = np.asarray(d.cls_logp, dtype=float)
+            if not np.all(np.isfinite(lp)):
+                # NaN/Inf cộng vào by_sensor thì kẹp (np.clip) cũng không xoá
+                # được: nhận dạng thành NaN mãi. Pipeline đã lọc và đếm trước
+                # (``Pipeline.dropped``); đây là chốt chặn cuối.
+                continue
             # Trừ GIÁ TRỊ TRUNG BÌNH chứ không trừ giá trị lớn nhất.
             # Trừ max thì lớp tốt nhất luôn được cộng 0 còn các lớp khác bị
             # trừ đi — tức là cảm biến chỉ biết dìm lớp khác xuống, và hạ

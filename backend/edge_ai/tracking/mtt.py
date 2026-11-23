@@ -187,6 +187,9 @@ class MultiTracker:
     def step(self, dets: list[Detection], w: Weather, k: int) -> list[dict]:
         """Xử lý một khung. Trả về bản tin của các vết bám ĐÃ XÁC NHẬN."""
         t_all = time.perf_counter()
+        # Số đo NaN/Inf phải bị loại TRƯỚC liên kết: nếu không, NaN trượt mọi
+        # cổng, rơi vào nhóm "không gán được" và sinh ra vết bám toạ độ NaN.
+        dets = self.pipe.drop_nonfinite(dets)
         predict_many([t.ekf for t in self.tracks.values()], FRAME_DT)
 
         t0 = time.perf_counter()

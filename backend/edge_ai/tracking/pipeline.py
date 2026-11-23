@@ -33,7 +33,7 @@ from edge_ai.config import (  # noqa: F401
 from edge_ai.ml.nets import MicroDopplerNet, TrajTransformer
 from edge_ai.ml.rf_stft import RFNetSTFT
 from edge_ai.sim.scene import TARGET_KINDS, Detection, Weather
-from edge_ai.tracking.ekf import EKF
+from edge_ai.tracking.ekf import EKF, finite_measurement
 from edge_ai.tracking.fusion import DECEPTION_LEVEL, IdentityFuser, track_confidence
 
 torch.set_num_threads(2)
@@ -196,6 +196,9 @@ class Pipeline:
             k: deque(maxlen=TIMING_KEEP)
             for k in ["preproc", "rf_net", "md_net", "assoc", "ekf", "fuse", "traj", "total"]
         }
+        # Số đo bị loại vì chứa NaN/Inf (cảm biến hỏng, gói tin lỗi). Đếm ra
+        # đây để hiện trên /api/state, thay vì bỏ im lặng.
+        self.dropped = {"measurement": 0, "class_logp": 0, "pseudo": 0}
 
     # ---------------------------------------------------------------- helpers
     def _t(self, key, t0):
@@ -221,6 +224,20 @@ class Pipeline:
             for d, lp in zip(md_d, md_logp_batch(self.md, [d.meta["spec"] for d in md_d])):
                 d.cls_logp = lp
         self._t("md_net", t0)
+
+    def drop_nonfinite(self, dets: list[Detection]) -> list[Detection]:
+        """Bỏ số đo có z/R không hữu hạn; bỏ phần nhận dạng (``cls_logp``)
+        không hữu hạn nhưng giữ số đo vị trí. Mọi lần bỏ đều được đếm."""
+        out = []
+        for d in dets:
+            if not finite_measurement(d.z, d.R):
+                self.dropped["measurement"] += 1
+                continue
+            if d.cls_logp is not None and not np.all(np.isfinite(d.cls_logp)):
+                d.cls_logp = None
+                self.dropped["class_logp"] += 1
+            out.append(d)
+        return out
 
     # ------------------------------------------------------------------ frame
     def step(
@@ -283,6 +300,7 @@ class Pipeline:
         t0 = time.perf_counter()
         if predict:
             tr.ekf.predict(FRAME_DT)
+        dets = self.drop_nonfinite(dets)
         used = []
         for d in dets:
             # mtt.py có thể nới cổng cho số đo đã được nó tự kiểm (``gate``).
@@ -334,7 +352,10 @@ class Pipeline:
                 # đã học, thay vì để EKF trôi thẳng. Hiệp phương sai nới dần
                 # theo thời gian mất dấu: càng lâu càng bớt tin.
                 sd = 4.0 + 1.2 * d
-                tr.ekf.update("lidar", pred[d], np.eye(3) * sd**2, gate=1e9)
+                if np.all(np.isfinite(pred[d])):
+                    tr.ekf.update("lidar", pred[d], np.eye(3) * sd**2, gate=1e9)
+                else:
+                    self.dropped["pseudo"] += 1
             pred = pred[max(0, d) : max(0, d) + HOR]
         self._t("traj", t0)
 

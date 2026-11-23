@@ -196,3 +196,54 @@ chỉnh, xác suất đưa vào bộ hợp nhất nhọn hơn; trần 4 nats m�
 (`fusion.PER_SENSOR_CAP`) vẫn giữ nguyên. Số liệu: `data/results/calibration.json`.
 Bản ONNX (mục 6) xuất logit, nên nếu sau này chạy bằng ONNX Runtime thì vẫn
 phải chia cho T sau mạng.
+
+### E2-A. Cổng χ² của EKF: đã đo, **CHƯA đổi** (chờ chủ dự án quyết)
+
+Thay đổi đã thử: trong `EKF.update`, ngưỡng `gate * len(z)` (gate = 16, tức
+16 / 32 / 48 / 64 cho d = 1..4) đổi thành phân vị χ² 99% theo d = len(z)
+(`scipy.stats.chi2.ppf(0.99, d)`: 6,63 / 9,21 / 11,34 / 13,28), ngưỡng cứu vết
+của `mtt.py` giữ nguyên giá trị tuyệt đối. Đo trước/sau bằng đúng kịch bản và
+hạt giống của `evaluate_mtt.main` (5 lần × 200 khung) và `evaluate.main`
+(8 lần × 220 khung). "Vết đứt" = số lần một mục tiêu đang được bám (trong
+50 m) ở khung k−1 mà không được bám ở khung k. Số liệu đầy đủ:
+`data/results/ekf_gate_compare.json`.
+
+**Nhiều mục tiêu (OSPA, c = 100 m):**
+
+| Kịch bản | OSPA trước → sau | Độ phủ | Đổi ID | Vết đứt | Vết giả/khung | EKF loại số đo |
+|---|---|---|---|---|---|---|
+| M1 · 3 drone + 1 chim | 1,115 → 1,180 m (+5,8%) | 1,0 → 1,0 | 0 → 0 | 0 → 0 | 0 → 0 | 0% → 1,3% |
+| M2 · 2 drone sát nhau | 1,677 → 1,567 m (−6,6%) | 1,0 → 1,0 | 0 → 0 | 0 → 0 | 0,007 → 0 | 0% → 1,6% |
+| M3 · bầy 6 drone, mưa | 1,405 → 1,456 m (+3,6%) | 1,0 → 1,0 | 0 → 0 | 0 → 0 | 0 → 0 | 0% → 2,0% |
+| M4 · 2 drone + 2 chim, sương đêm | 3,540 → 3,768 m (+6,4%) | 1,0 → 1,0 | 0 → 0 | 0 → 0 | 0 → 0 | 0% → 2,2% |
+
+**Một mục tiêu (RMSE vị trí, bỏ 20 khung đầu):**
+
+| Kịch bản | RMSE trước → sau | EKF loại số đo |
+|---|---|---|
+| S1 · trời quang | 9,07 → 16,14 m (**+78%**) | 0,2% → 5,1% |
+| S2 · đêm + sương mù | 9,09 → 9,87 m (+8,5%) | 0% → 3,1% |
+| S3 · nhiễu RF | 8,18 → 9,49 m (+16%) | 0,1% → 5,3% |
+| S4 · mưa to | 5,81 → 8,91 m (**+53%**) | 0,7% → 8,4% |
+| S5 · chim | 13,70 → 31,96 m (**+133%**) | 0% → 9,9% |
+| S6 · dán nhãn ngụy trang | 0,91 → 2,50 m (**+173%**) | 0% → 3,9% |
+| S7 · mất dấu 4 s | 13,58 → 15,62 m (+15%) | 0% → 3,7% |
+
+Nhận dạng (độ chính xác phân loại) không đổi ở mọi kịch bản.
+
+**Kết luận:** bám nhiều mục tiêu gần như không đổi (OSPA trong ±7%, không vết
+đứt, không đổi ID), nhưng bám một mục tiêu **xấu đi rõ rệt** (RMSE +8% đến
++173%). Theo điều kiện của quyết định E2-A, thay đổi hành vi **không được
+commit**; mã vẫn dùng `gate * len(z)`.
+
+Chẩn đoán: nếu bộ lọc nhất quán (sai số đúng như P và R khai báo) thì cổng
+99% chỉ loại khoảng 1% số đo đúng. Đo được 3–10% trong bài một mục tiêu,
+nghĩa là bộ lọc **tự tin quá mức** (P hoặc R nhỏ hơn sai số thật; mục tiêu
+cơ động mạnh hơn `sigma_a = 6 m/s²`, hoặc nhiễu mô phỏng có đuôi dày). Cổng
+cũ rộng đã che vấn đề đó. Bài nhiều mục tiêu ít bị vì `mtt.py` đã lọc liên kết
+bằng cổng 99,9% riêng và có cơ chế cứu vết. Transformer quỹ đạo cũng được huấn
+luyện trên trạng thái EKF với cổng cũ (`training/train_traj_ekf.py`).
+
+Hướng cho chủ dự án chọn: (1) giữ cổng cũ và ghi rõ lý do (E2-B); (2) đổi cổng
+**kèm** chỉnh nhất quán bộ lọc (kiểm NIS, tăng `sigma_a` hoặc R), rồi đo lại;
+(3) dùng phân vị cao hơn, ví dụ 99,9% hoặc 99,99%, rồi đo lại.

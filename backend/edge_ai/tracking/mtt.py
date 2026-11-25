@@ -283,7 +283,9 @@ class MultiTracker:
                     assigned[owner[id(d)]].remove(d)
                 assigned[hungry[i].tid].insert(0, d)
                 d.meta["rescued"] = True
-                d.meta["gate"] = 4.0 * CHI2_GATE[d.sensor] / len(d.z) + 1.0
+                # Ngưỡng tuyệt đối cho d² trong EKF.update, giữ nguyên giá trị
+                # của bản trước (khi đó là (4·c/d + 1)·d = 4·c + d).
+                d.meta["gate"] = 4.0 * CHI2_GATE[d.sensor] + len(d.z)
                 taken.add(j)
         return [d for j, d in enumerate(free) if j not in taken]  # free = phần đầu của cand
 

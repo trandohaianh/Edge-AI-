@@ -197,7 +197,7 @@ chỉnh, xác suất đưa vào bộ hợp nhất nhọn hơn; trần 4 nats m�
 Bản ONNX (mục 6) xuất logit, nên nếu sau này chạy bằng ONNX Runtime thì vẫn
 phải chia cho T sau mạng.
 
-### E2-A. Cổng χ² của EKF: đã đo, **CHƯA đổi** (chờ chủ dự án quyết)
+### E2-A. Cổng χ² của EKF: lần đo đầu (23/11), cổng 99% với `sigma_a = 6`
 
 Thay đổi đã thử: trong `EKF.update`, ngưỡng `gate * len(z)` (gate = 16, tức
 16 / 32 / 48 / 64 cho d = 1..4) đổi thành phân vị χ² 99% theo d = len(z)
@@ -247,6 +247,58 @@ luyện trên trạng thái EKF với cổng cũ (`training/train_traj_ekf.py`).
 Hướng cho chủ dự án chọn: (1) giữ cổng cũ và ghi rõ lý do (E2-B); (2) đổi cổng
 **kèm** chỉnh nhất quán bộ lọc (kiểm NIS, tăng `sigma_a` hoặc R), rồi đo lại;
 (3) dùng phân vị cao hơn, ví dụ 99,9% hoặc 99,99%, rồi đo lại.
+
+### E2 (25/11). Đã chọn hướng (2): chỉnh `sigma_a` theo NIS, cổng χ² chuẩn 99,99%
+
+**Mã đã đổi:** `EKF.update` dùng ngưỡng tuyệt đối `chi2.ppf(0.9999, d)` với
+d = len(z) (15,14 / 18,42 / 21,11 / 23,51 cho d = 1..4) thay cho `16 · d`;
+`sigma_a` mặc định 6 → **10 m/s²** (`ekf.SIGMA_A`). Ngưỡng cứu vết của `mtt.py`
+giữ nguyên giá trị tuyệt đối. Số đo quét đầy đủ: `data/results/ekf_nis_sweep.json`.
+
+**NIS** là d²/d trung bình (d² = khoảng cách Mahalanobis bình phương của số
+đo so với dự đoán). Bộ lọc nhất quán thì NIS ≈ 1. R của cả bốn cảm biến khớp
+nhiễu mô phỏng (RF và EO đã có NIS ≈ 1,0 ngay với `sigma_a = 6`). Chỉ radar
+lệch: NIS 1,2–1,4 ở bài một mục tiêu, 1,2–1,25 ở bài nhiều mục tiêu. Nguyên
+nhân là mục tiêu cơ động mạnh hơn mức mô hình giả định, không phải R sai.
+
+| Cấu hình (8 lần × 220 khung) | NIS radar | EKF loại | RMSE S1…S7 (m) |
+|---|---|---|---|
+| `sigma_a` 6, cổng cũ (bản trước) | 1,19–1,40 | 0–0,7% | 9,07 / 9,09 / 8,18 / 5,81 / 13,70 / 0,91 / 13,58 |
+| `sigma_a` 10, cổng 99% | 0,92–1,34 | 0,5–4,9% | 8,96 / 8,53 / 7,82 / 6,38 / 19,99 / 1,93 / 12,46 |
+| `sigma_a` 8, cổng 99,99% | 1,02–1,17 | 0–1,0% | 8,56 / 8,62 / 7,86 / 5,56 / 13,10 / 0,91 / 12,57 |
+| **`sigma_a` 10, cổng 99,99% (chọn)** | **0,92–1,03** | **0–0,8%** | **7,79 / 8,38 / 7,60 / 5,35 / 12,35 / 0,92 / 12,25** |
+| `sigma_a` 12, cổng 99,99% | 0,86–0,94 | 0–0,5% | 7,50 / 8,27 / 7,48 / 5,20 / 11,25 / 0,94 / 12,09 |
+
+Cổng 99% vẫn hỏng ở kịch bản chim (S5) kể cả khi NIS đã ≈ 1: loại nhầm vài
+số đo đúng, vết lệch dần, NIS tăng và bị loại tiếp (S5: 19,99 m ở
+`sigma_a` 10). Ở bài một mục tiêu không có liên kết nhiều số đo, cổng chỉ cần
+chặn số đo hỏng, nên 99,99% là đủ.
+
+**Nhiều mục tiêu (5 lần × 200 khung, `evaluate_mtt.main`):**
+
+| Kịch bản | OSPA trước → sau | NIS radar trước → sau | Độ phủ / đổi ID / vết giả |
+|---|---|---|---|
+| M1 · 3 drone + 1 chim | 1,14 → 1,38 m (+21%) | 1,19 → 0,92 | 100% / 0 / 0 (không đổi) |
+| M2 · 2 drone sát nhau | 1,68 → 1,24 m (−26%) | 1,25 → 0,94 | 100% / 0 / 0,007 (không đổi) |
+| M3 · bầy 6 drone, mưa | 1,41 → 1,60 m (+13%) | 1,25 → 1,00 | 100% / 0 / 0 (không đổi) |
+| M4 · 2 drone + 2 chim, sương đêm | 3,54 → 3,93 m (+11%) | 1,17 → 0,90 | 100% / 0 / 0 (không đổi) |
+
+**Đánh đổi đã chấp nhận:** bài một mục tiêu tốt hơn ở 6/7 kịch bản (−6% đến
+−14%; S6 0,91 → 0,92 m, trong khoảng nhiễu), dự đoán quỹ đạo khi mất dấu
+(S7) 18,3 → 16,9 m. Bài nhiều mục tiêu có OSPA tăng 0,2–0,4 m ở 3/4 kịch bản
+vì `sigma_a` lớn hơn thì bộ lọc làm mượt ít hơn với mục tiêu bay đều, nhưng
+không vết đứt, không đổi ID, độ phủ vẫn 100%. Chọn 10 chứ không 12 vì ở 10
+NIS ≈ 1 ở **cả hai** bài; 12 làm bài một mục tiêu tốt thêm chút nhưng bài
+nhiều mục tiêu kém thêm (M1 1,44 m, M3 1,65 m, M4 4,11 m) và NIS < 1 (bộ lọc
+bắt đầu thiếu tự tin). `data/results/scenario_results.json` và
+`mtt_results.json` đã chạy lại bằng mã mới (độ trễ trong `mtt_results.json`
+đo trên WSL2 lúc chạy lại, không phải số độ trễ chính thức; xem
+`frame_latency.json`).
+
+**Chưa làm:** Transformer quỹ đạo vẫn là bản huấn luyện trên trạng thái EKF
+với `sigma_a = 6` (`training/train_traj_ekf.py`); số 19,8% trong
+`traj_metrics.json` là của bản đó. Huấn luyện lại với `sigma_a = 10` là việc
+riêng, chưa đo.
 
 ### E4-A. Giữ PyTorch eager: p50/p95/p99 thời gian một khung
 

@@ -314,8 +314,9 @@ class Pipeline:
         dets = self.drop_nonfinite(dets)
         used = []
         for d in dets:
-            # mtt.py có thể nới cổng cho số đo đã được nó tự kiểm (``gate``).
-            if tr.ekf.update(d.sensor, d.z, d.R, gate=d.meta.get("gate", 16.0)):
+            # mtt.py có thể nới cổng cho số đo đã được nó tự kiểm (``gate``,
+            # ngưỡng tuyệt đối cho d²); không có thì EKF dùng cổng χ² chuẩn.
+            if tr.ekf.update(d.sensor, d.z, d.R, gate=d.meta.get("gate")):
                 used.append(d.sensor)
         self._t("ekf", t0)
 

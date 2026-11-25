@@ -56,9 +56,9 @@ lý phải xong trong ngân sách 50 ms của đề bài.
 | Nhận dạng đúng qua 7 kịch bản mô phỏng điều kiện hiện trường | — | **100%** ở cả 7 |
 | Báo động nhầm khi gặp chim | — | **0%** số khung bị đẩy lên người trực |
 | Dự đoán quỹ đạo 1 giây tới | EKF + Transformer | sai số thấp hơn **19,8%** so với ngoại suy vận tốc không đổi |
-| Bám qua quãng mất dấu 4 giây (S7) | — | 18,3 m so với 26,9 m của ngoại suy vận tốc không đổi (**thấp hơn ~32%**) |
+| Bám qua quãng mất dấu 4 giây (S7) | — | 16,9 m so với 22,0 m của ngoại suy vận tốc không đổi (**thấp hơn ~23%**) |
 | Chống nhãn ngụy trang đánh lừa camera | — | **100%** đúng trên 1.596 khung / 12 lần chạy (camera đơn lẻ: 0%, hợp nhất cộng đều: 10,9%); vết nghi bị đánh lừa **vẫn được đưa lên người trực** |
-| Bám nhiều mục tiêu có báo động giả | — | tới 6 drone, 3 báo động giả/khung: độ phủ **100%**, **0** lần đổi ID, OSPA 0,8–3,9 m |
+| Bám nhiều mục tiêu có báo động giả | — | tới 6 drone, 3 báo động giả/khung: độ phủ **100%**, **0** lần đổi ID, OSPA trung bình 1,2–3,9 m |
 | Chạy trên SoC nhúng 10–25 W | Jetson Orin | **chưa đo trên phần cứng thật** |
 
 Toàn bộ dữ liệu cảm biến là **mô phỏng theo mô hình vật lý**; không có dữ liệu

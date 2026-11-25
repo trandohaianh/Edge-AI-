@@ -14,8 +14,36 @@ thực tế là cảm biến rơi rụng không đồng bộ.
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 
 import numpy as np
+from scipy.stats import chi2
+
+# Mức tin cậy của cổng χ² khi CẬP NHẬT bộ lọc (``EKF.update``). Ngưỡng theo
+# đúng số bậc tự do d = len(z): nếu bộ lọc nhất quán thì số đo đúng có
+# d² ~ χ²(d), nên 99,99% số đo đúng lọt qua cổng, bất kể cảm biến đo 1, 2, 3
+# hay 4 đại lượng.
+#
+# Bản cũ dùng ``gate * len(z)`` với gate = 16, tức ngưỡng 16, 32, 48, 64 cho
+# d = 1..4: mức tin cậy thật thay đổi theo d. Chọn 99,99% chứ không 99%: ở
+# bài một mục tiêu không có bài toán liên kết, cổng chỉ để chặn số đo hỏng,
+# còn loại nhầm 1% số đo đúng thì vết lệch dần và bị loại tiếp (đo được ở
+# kịch bản chim). Liên kết GNN trong mtt.py dùng cổng riêng 99,9%
+# (``CHI2_GATE``). Quyết định E2, số đo: docs/TEST_PLAN.md mục 7.
+GATE_CONFIDENCE = 0.9999
+
+# Độ lệch chuẩn gia tốc của mô hình vận tốc gần-không-đổi (m/s²). Chọn theo
+# NIS: với 6 m/s², NIS radar trung bình 1,2–1,4 (bộ lọc tự tin quá mức); với
+# 10 m/s², NIS ≈ 0,9–1,0 ở cả bài một và nhiều mục tiêu.
+SIGMA_A = 10.0
+
+
+@lru_cache(maxsize=64)
+def chi2_gate(d: int, confidence: float = GATE_CONFIDENCE) -> float:
+    """Phân vị ``confidence`` của phân bố χ² với ``d`` bậc tự do."""
+    if d < 1:
+        raise ValueError(d)
+    return float(chi2.ppf(confidence, d))
 
 
 def _wrap(a: float) -> float:
@@ -44,7 +72,7 @@ class EKF:
         self,
         p0: np.ndarray,
         v0: np.ndarray,
-        sigma_a: float = 6.0,
+        sigma_a: float = SIGMA_A,
         p_var: float = 400.0,
         v_var: float = 100.0,
     ):
@@ -170,9 +198,12 @@ class EKF:
         except np.linalg.LinAlgError:
             return float("inf")
 
-    def update(self, sensor: str, z: np.ndarray, R: np.ndarray, gate: float = 16.0) -> bool:
+    def update(self, sensor: str, z: np.ndarray, R: np.ndarray, gate: float | None = None) -> bool:
         """Trả về False nếu số đo bị cổng thống kê loại (nghi là nhiễu), hoặc
-        nếu số đo / R không hữu hạn (xem ``finite_measurement``)."""
+        nếu số đo / R không hữu hạn (xem ``finite_measurement``).
+
+        ``gate``: ngưỡng TUYỆT ĐỐI cho Mahalanobis bình phương d². Bỏ trống
+        thì dùng ``chi2_gate(len(z))`` (phân vị ``GATE_CONFIDENCE``)."""
         if not finite_measurement(z, R):
             return False
         hx = self.h(sensor, self.x)
@@ -192,7 +223,8 @@ class EKF:
         except np.linalg.LinAlgError:
             return False
         d2 = float(y @ Sinv @ y)
-        if not math.isfinite(d2) or d2 > gate * len(z):
+        thr = chi2_gate(len(z)) if gate is None else gate
+        if not math.isfinite(d2) or d2 > thr:
             return False
         K = self.P @ H.T @ Sinv
         self.x = self.x + K @ y

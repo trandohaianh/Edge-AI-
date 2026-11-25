@@ -233,3 +233,41 @@ def test_cuu_vet_gianh_lai_so_do_tu_vet_tam(models):
     r = EM.run(models, spec, w, 200, SEED + 5003, cl)
     assert r["id_switches"] == 0
     assert r["false_tracks_per_frame"] == 0.0
+
+
+# ------------------------------------------------------- cổng χ² của EKF (E2-A)
+@pytest.mark.parametrize("d, want", [(1, 15.137), (2, 18.421), (3, 21.108), (4, 23.513)])
+def test_cong_ekf_la_phan_vi_chi2_9999_theo_so_chieu(d, want):
+    from edge_ai.tracking.ekf import GATE_CONFIDENCE, chi2_gate
+
+    assert GATE_CONFIDENCE == 0.9999
+    assert chi2_gate(d) == pytest.approx(want, abs=2e-3)
+
+
+def test_cong_ekf_dung_nguong_chi2_khong_phai_gate_nhan_len_z():
+    """Số đo LiDAR có d² nằm giữa ngưỡng χ²(3) 99,99% (21,11) và ngưỡng cũ
+    16·3 = 48 phải bị loại; nới bằng ``gate`` tuyệt đối thì được nhận."""
+    from edge_ai.tracking.ekf import chi2_gate
+
+    def make():
+        f = EKF(np.array([200.0, 0.0, 50.0]), np.zeros(3), p_var=1.0, v_var=1.0)
+        return f
+
+    R = np.eye(3)
+    S = make().P[:3, :3] + R  # H = [I 0] cho LiDAR, chưa predict
+    d2_target = 30.0  # 21,11 < 30 < 48
+    dz = np.array([np.sqrt(d2_target * S[0, 0]), 0.0, 0.0])
+    z = make().pos + dz
+    f = make()
+    assert f.mahalanobis("lidar", z, R) == pytest.approx(d2_target, rel=1e-6)
+    assert chi2_gate(3) < d2_target < 16.0 * 3
+    assert f.update("lidar", z, R) is False
+    assert make().update("lidar", z, R, gate=d2_target + 1.0) is True
+
+
+def test_so_do_cuu_vet_giu_nguong_tuyet_doi_cu():
+    """mtt._rescue đặt meta['gate'] = 4·CHI2_GATE + d: đúng ngưỡng của bản
+    trước ((4·c/d + 1)·d), vì giờ ``gate`` là ngưỡng tuyệt đối cho d²."""
+    for s, d in (("radar", 4), ("lidar", 3), ("eo", 2), ("rf", 1)):
+        old = (4.0 * CHI2_GATE[s] / d + 1.0) * d
+        assert 4.0 * CHI2_GATE[s] + d == pytest.approx(old)

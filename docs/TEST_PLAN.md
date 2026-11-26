@@ -1,6 +1,6 @@
 # Kế hoạch và kết quả kiểm thử (bước 8)
 
-> Cập nhật: 23/11/2026. Trạng thái dùng đúng các mức của dự án: **đã viết**,
+> Cập nhật: 23/11/2026; số test cập nhật 26/11/2026. Trạng thái dùng đúng các mức của dự án: **đã viết**,
 > **đã chạy**, **đã kiểm thử đạt**, **đã triển khai**, **người dùng đã nghiệm
 > thu**. Chưa mục nào ở mức "người dùng đã nghiệm thu".
 
@@ -8,7 +8,7 @@
 
 | Loại | Cách chạy | Số lượng | Kết quả 22/11/2026 |
 |---|---|---|---|
-| Đơn vị + tích hợp (pytest) | `python -m pytest` | **104** | 104 đạt trong môi trường cài đúng `requirements.lock` (WSL, ổ Linux, 23/11; gồm 14 test sửa lỗi `test_loi_ro_rang.py` và 8 test hiệu chỉnh `test_calibration.py`). Chạy trên ổ D: qua WSL thì bài quyền tệp 600 hỏng vì ổ đó bỏ qua chmod. CI (82 test) đạt 22/11. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
+| Đơn vị + tích hợp (pytest) | `python -m pytest` | **110** | **110 đạt, 0 hỏng** ngày 26/11/2026 (WSL, môi trường cài đúng `requirements.lock`: torch 2.15.0+cpu, numpy 2.5.5; gồm 14 test sửa lỗi `test_loi_ro_rang.py`, 8 test hiệu chỉnh `test_calibration.py` và 6 test cổng χ² của E2 trong `test_mtt.py`). Lần trước: 104 đạt ngày 23/11 (WSL, ổ Linux); khi đó chạy trên ổ D: qua WSL thì bài quyền tệp 600 hỏng vì ổ đó bỏ qua chmod. CI (82 test) đạt 22/11. Trên Python `E:\` của máy dev: 1 bỏ qua (quyền tệp POSIX), 1 **hỏng có chủ đích** vì máy đó cài numpy 2.4.0 (L-7) |
 | Lint + định dạng | `pre-commit run --all-files` | ruff, ruff-format, 7 hook | Sạch |
 | CI | GitHub Actions: lint → quét lỗ hổng → test → đầu-cuối → ONNX → build Docker + gọi `/api/health` | 6 job | **Đạt cả 4** trên GitHub ngày 22/11/2026, commit `7155efb` ([run](https://github.com/trandohaianh/Edge-AI-/actions/runs/45011499960)); test chạy trên Linux nên bài quyền tệp cũng đạt. Lần chạy trước: `89e7bf5` (20/11) đạt |
 | Đầu-cuối trên trình duyệt | **Tự động** bằng Playwright + Chromium (`backend/tests/e2e`), mục 3 | 6 bài, phủ E-1..E-8 + mã truy cập + CSP | 6 đạt trên Windows, 3 lần liên tiếp (~45 s). Trước đó làm tay, tìm ra 4 lỗi |
@@ -21,8 +21,10 @@
 
 | Nhóm | Tệp | Kiểm cái gì |
 |---|---|---|
-| Lõi thuật toán | `test_core.py` (20) | Mô phỏng vật lý, EKF, hợp nhất, mâu thuẫn cảm biến |
-| Bám nhiều mục tiêu | `test_mtt.py` (13) | GNN, cổng χ², M-of-N, không đổi ID, vết giả, trần mạng nặng |
+| Lõi thuật toán | `test_core.py` (21) | Mô phỏng vật lý, EKF, hợp nhất, mâu thuẫn cảm biến |
+| Bám nhiều mục tiêu | `test_mtt.py` (19) | GNN, cổng χ² (gồm cổng chuẩn 99,99 % theo số chiều của E2), M-of-N, không đổi ID, vết giả, trần mạng nặng |
+| Lỗi rõ ràng 23/11 | `test_loi_ro_rang.py` (14) | Số đo NaN/Inf không làm EKF hỏng, không khoá vết khi quyết định chưa ghi được, nhật ký ghi dở / mốc dọn hỏng / đồng hồ chạy lùi |
+| Xuất ONNX | `test_onnx_export.py` (2) | Tầng STFT số thực dùng khi xuất ONNX cho cùng kết quả với tầng gốc |
 | Pipeline + máy chủ | `test_pipeline_server.py` (33) | Nạp mô hình an toàn, mất dấu, API, xác thực, chống dò mã, CSRF, CSP, header, nhật ký, quy tắc phụ thuộc |
 | Hiệu chỉnh xác suất | `test_calibration.py` (8) | T > 0, ECE không tệ hơn, argmax không đổi, thiếu tệp thì T = 1, pipeline áp T vào logit |
 | Nhật ký + sao lưu | `test_audit_backup.py` (13) | Chia tháng, sao lưu/khôi phục, dọn 12 tháng, quyền 600, dòng lệnh tiếng Việt |
@@ -112,7 +114,7 @@ với project `edge-ai-test`, cổng 18080/18443, rồi dọn sạch bằng `dow
 ## 5. Cách chạy lại
 
 ```bash
-python -m pytest                              # 104 test, ~4 phút trên laptop
+python -m pytest                              # 110 test, ~1–4 phút tuỳ máy
 python -m edge_ai.experiments.calibrate       # trong backend/: học T, ghi ECE trước/sau
 python -m edge_ai.experiments.soak --minutes 40   # trong backend/: chạy dài, cần psutil
 python -m edge_ai.experiments.export_onnx         # trong backend/: cần extra tools
